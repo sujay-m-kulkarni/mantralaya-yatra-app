@@ -1,0 +1,11 @@
+bin/
+obj/
+node_modules/
+.vs/
+.idea/
+*.user
+www/
+android/app/build/
+.env
+*.keystore
+TestResults/
