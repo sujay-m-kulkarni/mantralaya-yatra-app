@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>MantralayaYatra.Domain</RootNamespace>
+  </PropertyGroup>
+</Project>
