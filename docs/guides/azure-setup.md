@@ -1,8 +1,19 @@
 # Azure setup for the API
 
-One-time setup so `.github/workflows/api.yml` can deploy the API. Run the commands in **PowerShell** on your laptop with the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli-windows) installed. Run them one at a time (Windows PowerShell does not accept `&&`).
+One-time setup so `.github/workflows/api.yml` can deploy the API.
 
-What gets created, the same shape as VERA:
+**The quick way:** steps 1 to 4 below are done by one script. In PowerShell, from the repository folder, with the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli-windows) installed:
+
+```powershell
+az login
+.\infra\azure-setup.ps1 -Suffix sujay
+```
+
+It confirms the subscription, asks for a SQL admin password, creates everything, prints the values for GitHub and puts the connection string on your clipboard. Then do step 5 (GitHub). It is safe to run again. If PowerShell refuses to run scripts, run `Set-ExecutionPolicy -Scope Process Bypass` first (this window only).
+
+The steps below are what the script does, to run by hand or to understand it. Run them one at a time (Windows PowerShell does not accept `&&`).
+
+What gets created, all separate from VERA (its own resource group and App Service plan):
 
 | Resource | Name used below | Tier |
 |---|---|---|
