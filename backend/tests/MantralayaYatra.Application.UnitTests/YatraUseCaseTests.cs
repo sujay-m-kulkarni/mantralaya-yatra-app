@@ -97,9 +97,9 @@ public class YatraUseCaseTests
     }
 
     [Theory]
-    [InlineData("srv", 100100, null)]
+    [InlineData("srv", 100100L, null)]
     [InlineData("SRV", 0L, null)]
-    [InlineData("SRV", 100100, 0)]
+    [InlineData("SRV", 100100L, 0)]
     public async Task Seva_changes_are_validated(string code, long? rate, int? limit)
     {
         _world.SignInAs(MemberRole.Accounts);
