@@ -46,3 +46,17 @@ export function sevaProblem(
   }
   return null;
 }
+
+/**
+ * The sevas booked most often in this yatra, for the quick tiles on the booking form: by number of bookings,
+ * then the accountant's order. Only sevas that can be booked (offered, with a price).
+ */
+export function mostUsedSevas(types: readonly SevaType[], bookings: readonly { sevaCode: string }[], count = 4): SevaType[] {
+  const uses = new Map<string, number>();
+  for (const b of bookings) uses.set(b.sevaCode, (uses.get(b.sevaCode) ?? 0) + 1);
+  return types
+    .filter((t) => t.isActive && t.ratePaise !== null)
+    .slice()
+    .sort((a, b) => (uses.get(b.code) ?? 0) - (uses.get(a.code) ?? 0) || a.sortOrder - b.sortOrder || a.code.localeCompare(b.code))
+    .slice(0, count);
+}
