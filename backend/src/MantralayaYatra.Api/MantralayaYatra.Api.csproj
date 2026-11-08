@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>MantralayaYatra.Api</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <!-- For dotnet ef, which uses the API as its startup project. Not shipped. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MantralayaYatra.Application\MantralayaYatra.Application.csproj" />
+    <ProjectReference Include="..\MantralayaYatra.Infrastructure\MantralayaYatra.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

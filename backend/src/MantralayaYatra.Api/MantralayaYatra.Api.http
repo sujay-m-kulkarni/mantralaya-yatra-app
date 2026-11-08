@@ -1,0 +1,71 @@
+### Try the API locally (Development): the X-Dev-User header signs you in without Entra.
+@api = http://localhost:5180/api/v1
+@me = Sujay
+
+### 1. Create the yatra (you become its accountant; the four sevas are seeded without rates)
+POST {{api}}/yatras
+X-Dev-User: {{me}}
+Content-Type: application/json
+
+{ "name": "Mantralaya Yatra 2026", "startsOn": "2026-12-01", "endsOn": "2026-12-08", "displayName": "Sujay" }
+
+### 2. Your yatras — copy the id into @yatra below
+GET {{api}}/yatras
+X-Dev-User: {{me}}
+
+###
+@yatra = 00000000-0000-0000-0000-000000000000
+
+### 3. Set Sarva Seva's rate (₹1,001 = 100100 paise) — the real rates are yours to enter
+PUT {{api}}/yatras/{{yatra}}/seva-types/SRV
+X-Dev-User: {{me}}
+Content-Type: application/json
+
+{ "name": "Sarva Seva", "ratePaise": 100100, "dailyLimit": null, "requiresSankalpa": true, "isActive": true, "sortOrder": 2 }
+
+### 4. Add a volunteer; they sign in with this email
+POST {{api}}/yatras/{{yatra}}/members
+X-Dev-User: {{me}}
+Content-Type: application/json
+
+{ "email": "ramesh@dev.invalid", "displayName": "Ramesh", "role": "volunteer" }
+
+### 5. Ramesh books a seva and takes UPI, as his phone would push it
+POST {{api}}/yatras/{{yatra}}/sync/push
+X-Dev-User: Ramesh
+X-Dev-Email: ramesh@dev.invalid
+Content-Type: application/json
+
+{
+  "deviceId": "6f1c2a52-3a43-4f5e-9d1a-2b1f6f0c9a11",
+  "bookings": [{
+    "id": "0b8d1f7a-1c2e-4f3a-8b5d-6e7f8a9b0c1d",
+    "sevaCode": "SRV",
+    "sevaDate": "2026-12-04",
+    "devoteeName": "Venkatesh Kulkarni",
+    "sankalpa": { "onBehalfOf": "Venkatesh Kulkarni & family", "gotra": "Vasishta", "nakshatra": "Ashwini", "rashi": "Mesha" },
+    "amountPaise": 100100,
+    "draftReceiptNo": "SRV-D-RAM-0001",
+    "recordedAt": "2026-12-01T09:15:00+05:30"
+  }],
+  "payments": [{
+    "id": "2c4e6a8b-0d1f-4a3c-9e5b-7d9f1b3d5f7a",
+    "bookingId": "0b8d1f7a-1c2e-4f3a-8b5d-6e7f8a9b0c1d",
+    "amountPaise": 100100,
+    "mode": "upi",
+    "reference": "412345",
+    "recordedAt": "2026-12-01T09:16:00+05:30"
+  }]
+}
+
+### 6. The register for the seva day
+GET {{api}}/yatras/{{yatra}}/register?date=2026-12-04
+X-Dev-User: {{me}}
+
+### 7. The priest's list
+GET {{api}}/yatras/{{yatra}}/register/priest-list?date=2026-12-04
+X-Dev-User: {{me}}
+
+### 8. Everything since the start (a new phone's first pull)
+GET {{api}}/yatras/{{yatra}}/sync/pull?after=0
+X-Dev-User: {{me}}
