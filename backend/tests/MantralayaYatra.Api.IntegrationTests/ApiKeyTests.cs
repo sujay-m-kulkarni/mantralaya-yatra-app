@@ -20,10 +20,13 @@ public class ApiKeyTests(ApiFactory api) : IClassFixture<ApiFactory>
         var yatra = (await created.Content.ReadFromJsonAsync<YatraOut>())!;
         Assert.Equal("accounts", yatra.Role);
 
-        var booking = new BookingIn(Guid.NewGuid(), "AST", Today, "Gopal Hegde", null, null, 25100, "AST-D-SUJ-0001", DateTimeOffset.UtcNow.AddMinutes(-1));
+        var booking = new BookingIn(Guid.NewGuid(), "AST", Today, "Gopal Hegde", null,
+            new SankalpaDto("Gopal Hegde & family", "Kashyapa", "Rohini", "Vrishabha", null), 25100, "AST-D-SUJ-0001", DateTimeOffset.UtcNow.AddMinutes(-1));
         var pushed = await owner.PostAsJsonAsync($"/api/v1/yatras/{yatra.Id}/sync/push", new LedgerPushRequest(Guid.NewGuid(), [booking], null, null));
         var result = (await pushed.Content.ReadFromJsonAsync<LedgerPushResponse>())!;
-        Assert.Equal("AST-0001", result.Results.Single().ReceiptNo);
+        var entry = result.Results.Single();
+        Assert.True(entry.Status == EntryStatus.Applied, entry.Error);
+        Assert.Equal("AST-0001", entry.ReceiptNo);
 
         // A second phone with the same key is the same person and sees the yatra.
         var listed = await api.OwnerClient().GetFromJsonAsync<List<YatraOut>>("/api/v1/yatras");
