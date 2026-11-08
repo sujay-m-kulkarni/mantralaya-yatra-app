@@ -1,6 +1,6 @@
 import { SevaType } from './models';
 import { GOTRAS, NAKSHATRAS, RASHIS } from './sankalpa-lists';
-import { mostUsedSevas, sevaProblem, suggestCode } from './sevas';
+import { keptUntil, mostUsedSevas, sevaProblem, suggestCode } from './sevas';
 
 const seva = (code: string): SevaType => ({ id: code, code, name: code, ratePaise: 100100, dailyLimit: null, requiresSankalpa: true, isActive: true, sortOrder: 1 });
 
@@ -33,6 +33,16 @@ describe('Most used sevas', () => {
     const bookings = [{ sevaCode: 'DD' }, { sevaCode: 'DD' }, { sevaCode: 'CC' }, { sevaCode: 'EE' }, { sevaCode: 'FF' }];
     expect(mostUsedSevas(types, bookings).map((t) => t.code)).toEqual(['DD', 'CC', 'AA', 'BB']);
     expect(mostUsedSevas(types, []).map((t) => t.code)).toEqual(['AA', 'BB', 'CC', 'DD']);
+  });
+});
+
+describe('Deleted sevas', () => {
+  it('are kept 60 days, keep their code taken, and leave the quick tiles', () => {
+    const gone = { ...seva('HST'), deletedAt: '2026-11-08T12:00:00Z', isActive: false };
+    expect(keptUntil(gone)).toBe('2027-01-07');
+    expect(keptUntil(seva('SRV'))).toBeNull();
+    expect(sevaProblem({ code: 'HST', name: 'New', ratePaise: 100, dailyLimit: null }, [gone], true)).toContain('deleted seva');
+    expect(mostUsedSevas([gone, seva('SRV')], [{ sevaCode: 'HST' }]).map((t) => t.code)).toEqual(['SRV']);
   });
 });
 

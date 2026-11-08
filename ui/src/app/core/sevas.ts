@@ -38,8 +38,9 @@ export function sevaProblem(
   if (!s.name.trim()) return 'Enter the seva name.';
   if (s.name.trim().length > MAX_SEVA_NAME) return `Keep the name under ${MAX_SEVA_NAME} characters.`;
   if (!SEVA_CODE.test(s.code)) return 'The short code must be 2 to 5 capital letters, e.g. SRV.';
-  if (isNew && existing.some((t) => t.code === s.code)) return `${s.code} is already used by another seva.`;
-  if (isNew && existing.length >= MAX_SEVAS) return `A yatra can have at most ${MAX_SEVAS} sevas.`;
+  const taken = existing.find((t) => t.code === s.code);
+  if (isNew && taken) return taken.deletedAt ? `${s.code} belongs to a deleted seva. Restore it, or choose another code.` : `${s.code} is already used by another seva.`;
+  if (isNew && existing.filter((t) => !t.deletedAt).length >= MAX_SEVAS) return `A yatra can have at most ${MAX_SEVAS} sevas.`;
   if (s.ratePaise === null) return 'Enter the price in rupees, e.g. 1001.';
   if (s.dailyLimit !== null && (!Number.isInteger(s.dailyLimit) || s.dailyLimit < 1 || s.dailyLimit > 10_000)) {
     return 'The daily limit must be a whole number from 1 to 10000, or left empty.';
@@ -52,6 +53,7 @@ export function sevaProblem(
  * then the accountant's order. Only sevas that can be booked (offered, with a price).
  */
 export function mostUsedSevas(types: readonly SevaType[], bookings: readonly { sevaCode: string }[], count = 4): SevaType[] {
+  types = types.filter((t) => !t.deletedAt);
   const uses = new Map<string, number>();
   for (const b of bookings) uses.set(b.sevaCode, (uses.get(b.sevaCode) ?? 0) + 1);
   return types
@@ -59,4 +61,14 @@ export function mostUsedSevas(types: readonly SevaType[], bookings: readonly { s
     .slice()
     .sort((a, b) => (uses.get(b.code) ?? 0) - (uses.get(a.code) ?? 0) || a.sortOrder - b.sortOrder || a.code.localeCompare(b.code))
     .slice(0, count);
+}
+
+/** Days a deleted seva is kept (and can be restored) before the server may remove it. */
+export const KEEP_DELETED_DAYS = 60;
+
+/** The day a deleted seva stops being kept, as YYYY-MM-DD in IST, or null when it is not deleted. */
+export function keptUntil(seva: Pick<SevaType, 'deletedAt'>): string | null {
+  if (!seva.deletedAt) return null;
+  const until = new Date(new Date(seva.deletedAt).getTime() + KEEP_DELETED_DAYS * 86_400_000);
+  return new Date(until.getTime() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 }

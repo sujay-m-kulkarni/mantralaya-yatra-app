@@ -127,7 +127,8 @@ public sealed record SevaTypeOut(
     int? DailyLimit,
     bool RequiresSankalpa,
     bool IsActive,
-    int SortOrder);
+    int SortOrder,
+    DateTimeOffset? DeletedAt = null);
 
 /// <summary>One changed row. Exactly one of the payload fields is set, matching <see cref="Kind"/>.</summary>
 public sealed record PulledChange(

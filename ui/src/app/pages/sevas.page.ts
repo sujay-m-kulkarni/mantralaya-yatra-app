@@ -7,7 +7,9 @@ import { sortedSevaTypes } from '../core/ledger';
 import { LedgerService } from '../core/ledger.service';
 import { SevaType } from '../core/models';
 import { paiseToInput, parseRupees } from '../core/money';
-import { MAX_SEVA_NAME, sevaProblem, suggestCode } from '../core/sevas';
+import { KEEP_DELETED_DAYS, MAX_SEVA_NAME, keptUntil, sevaProblem, suggestCode } from '../core/sevas';
+import { formatDay } from '../core/dates';
+import { ToastService } from '../core/toast';
 
 /** The accountant creates the yatra's sevas and sets each one's fixed price. Needs network: sevas live on the server. */
 @Component({
@@ -53,6 +55,26 @@ import { MAX_SEVA_NAME, sevaProblem, suggestCode } from '../core/sevas';
               </button>
             }
           </div>
+          @if (deleted().length > 0) {
+            <h2 class="section-label">Deleted · kept {{ keepDays }} days</h2>
+            <div class="list">
+              @for (s of deleted(); track s.code) {
+                <div class="card seva off">
+                  <span class="row">
+                    <span class="name">{{ s.name }}</span>
+                    <span class="num price">{{ s.ratePaise === null ? 'No price' : (s.ratePaise | inr) }}</span>
+                  </span>
+                  <span class="row muted">
+                    <span>Code <strong class="code">{{ s.code }}</strong> · kept until {{ untilLabel(s) }}</span>
+                    @if (ledger.isAccounts()) {
+                      <button class="link-btn" type="button" (click)="restore(s)" [disabled]="busy()">Restore</button>
+                    }
+                  </span>
+                </div>
+              }
+            </div>
+          }
+          @if (listError()) { <div class="banner bad" role="alert">{{ listError() }}</div> }
           @if (ledger.isAccounts()) {
             <button class="btn" type="button" (click)="add()">
               <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
@@ -88,10 +110,24 @@ import { MAX_SEVA_NAME, sevaProblem, suggestCode } from '../core/sevas';
               <label class="check"><input type="checkbox" name="sactive" [(ngModel)]="isActive" /> Offered for booking (untick to hide it)</label>
             }
             @if (error()) { <div class="banner bad" role="alert">{{ error() }}</div> }
-            <div class="actions">
-              <button class="btn secondary" type="button" (click)="cancel()" [disabled]="saving()">Cancel</button>
-              <button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save seva' }}</button>
-            </div>
+            @if (confirmDelete()) {
+              <div class="banner warn confirm" role="alertdialog" aria-labelledby="del-title">
+                <strong id="del-title">Delete {{ editing()!.name }}?</strong>
+                <span>It disappears from booking and from this list. Bookings already made keep it. You can restore it for {{ keepDays }} days.</span>
+                <div class="actions">
+                  <button class="btn secondary" type="button" (click)="confirmDelete.set(false)" [disabled]="saving()">Keep it</button>
+                  <button class="btn danger" type="button" (click)="remove()" [disabled]="saving()">{{ saving() ? 'Deleting…' : 'Delete' }}</button>
+                </div>
+              </div>
+            } @else {
+              <div class="actions">
+                <button class="btn secondary" type="button" (click)="cancel()" [disabled]="saving()">Cancel</button>
+                <button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save seva' }}</button>
+              </div>
+              @if (!isNew()) {
+                <button class="delete" type="button" (click)="confirmDelete.set(true)" [disabled]="saving()">Delete this seva</button>
+              }
+            }
           </form>
         }
       </div>
@@ -115,18 +151,30 @@ import { MAX_SEVA_NAME, sevaProblem, suggestCode } from '../core/sevas';
     .check { display: flex; gap: 10px; align-items: center; font-size: 14px; min-height: 40px; }
     .check input { width: 20px; height: 20px; accent-color: var(--my-accent); }
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .section-label { margin: 8px 0 0; }
+    .confirm { display: flex; flex-direction: column; gap: 8px; }
+    .btn.danger { background: var(--my-bad); border-color: var(--my-bad); color: #fff; }
+    .delete { align-self: center; min-height: 44px; padding: 0 12px; border: none; background: transparent; color: var(--my-bad); font: inherit; font-weight: 600; cursor: pointer; }
+    .link-btn { min-height: 36px; padding: 0 8px; border: none; background: transparent; color: var(--my-accent); font: inherit; font-weight: 700; cursor: pointer; }
   `,
 })
 export class SevasPage {
   readonly ledger = inject(LedgerService);
   readonly maxName = MAX_SEVA_NAME;
 
-  readonly sevas = computed(() => sortedSevaTypes(this.ledger.ledger().sevaTypes));
+  private readonly toast = inject(ToastService);
+  readonly keepDays = KEEP_DELETED_DAYS;
+
+  readonly sevas = computed(() => sortedSevaTypes(this.ledger.ledger().sevaTypes).filter((s) => !s.deletedAt));
+  readonly deleted = computed(() => sortedSevaTypes(this.ledger.ledger().sevaTypes).filter((s) => !!s.deletedAt));
   /** The seva being changed; a blank one while adding; null shows the list. */
   readonly editing = signal<SevaType | null>(null);
   readonly isNew = signal(false);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly confirmDelete = signal(false);
+  readonly busy = signal(false);
+  readonly listError = signal<string | null>(null);
 
   name = '';
   code = '';
@@ -151,11 +199,47 @@ export class SevasPage {
   cancel(): void {
     this.editing.set(null);
     this.error.set(null);
+    this.confirmDelete.set(false);
+  }
+
+  untilLabel(s: SevaType): string {
+    const day = keptUntil(s);
+    return day ? formatDay(day) : '';
+  }
+
+  async remove(): Promise<void> {
+    const current = this.editing();
+    if (!current) return;
+    this.saving.set(true);
+    this.error.set(null);
+    try {
+      await this.ledger.deleteSevaType(current.code);
+      this.toast.ok(`${current.name} deleted · restore it within ${KEEP_DELETED_DAYS} days`);
+      this.confirmDelete.set(false);
+      this.editing.set(null);
+    } catch (e) {
+      this.error.set(`Not deleted: ${e instanceof Error ? e.message : String(e)} This needs network.`);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async restore(s: SevaType): Promise<void> {
+    this.busy.set(true);
+    this.listError.set(null);
+    try {
+      await this.ledger.restoreSevaType(s.code);
+      this.toast.ok(`${s.name} restored`);
+    } catch (e) {
+      this.listError.set(`Not restored: ${e instanceof Error ? e.message : String(e)} This needs network.`);
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   onName(name: string): void {
     if (this.isNew() && !this.codeTouched) {
-      this.code = suggestCode(name, this.sevas().map((s) => s.code));
+      this.code = suggestCode(name, this.ledger.ledger().sevaTypes.map((s) => s.code));
     }
   }
 
@@ -170,7 +254,7 @@ export class SevasPage {
     const ratePaise = parseRupees(this.price);
     const dailyLimit = this.limit.trim() ? Number(this.limit.trim()) : null;
     const seva = { code: this.code, name: this.name.trim(), ratePaise, dailyLimit };
-    const problem = sevaProblem(seva, this.sevas(), this.isNew());
+    const problem = sevaProblem(seva, this.ledger.ledger().sevaTypes, this.isNew());
     if (problem) {
       this.error.set(problem);
       return;
@@ -197,6 +281,7 @@ export class SevasPage {
   }
 
   private fill(s: SevaType): void {
+    this.confirmDelete.set(false);
     this.name = s.name;
     this.code = s.code;
     this.price = paiseToInput(s.ratePaise);

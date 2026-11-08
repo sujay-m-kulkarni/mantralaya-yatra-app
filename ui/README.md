@@ -10,7 +10,7 @@ The volunteers' phone app for the Seva Register. Same stack and versions as Mone
 | Set up | Server address, your name and email; choose a yatra or start one (you become its accountant) |
 | Seva Register | Day switcher, money collected that day (cash, UPI/bank, pending), seva filter, slots used against daily limits, every booking. Pull down to sync |
 | Book a seva | Four small tiles for the most booked sevas, and a list to choose any seva (full ones greyed out), seva date, devotee and mobile, sankalpa (gotra, nakshatra and rashi from lists; "Other" for an unlisted gotra), the seva's fixed price, paid now by cash/UPI/bank or not paid. "Save" shows a green "Seva saved" note and returns to the seva list for that day; nothing is sent |
-| Sevas | The accountant creates each seva with its name, short code (the receipt prefix), price, daily limit and whether it needs sankalpa; changes a price (new bookings only) or hides a seva. Needs network |
+| Sevas | The accountant creates each seva with its name, short code (the receipt prefix), price, daily limit and whether it needs sankalpa; changes a price (new bookings only), hides a seva, or deletes one (kept 60 days, restorable from the Deleted list). Needs network |
 | Booking | Receipt (provisional until synced, then the final number), payments, record a later payment; the accountant can reverse a booking or a payment |
 | Priest list | The day's sevas by type with sankalpa details; share or print |
 

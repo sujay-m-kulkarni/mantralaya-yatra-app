@@ -103,6 +103,27 @@ public class SevaRegisterTests(ApiFactory api) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task A_deleted_seva_stays_in_the_database_marked_deleted_and_can_be_restored()
+    {
+        var (accounts, yatraId) = await NewYatraAsync();
+        var first = await accounts.GetFromJsonAsync<LedgerPullResponse>($"{Base(yatraId)}/sync/pull");
+
+        var deleted = await accounts.DeleteAsync($"{Base(yatraId)}/seva-types/HST");
+        var next = await accounts.GetFromJsonAsync<LedgerPullResponse>($"{Base(yatraId)}/sync/pull?after={first!.NextAfter}");
+        var newBooking = await accounts.PostAsJsonAsync($"{Base(yatraId)}/sync/push", new LedgerPushRequest(Guid.NewGuid(), [Booking("HST") with { RecordedAt = DateTimeOffset.UtcNow.AddMinutes(1) }], null, null));
+        var restored = await accounts.PostAsync($"{Base(yatraId)}/seva-types/HST/restore", null);
+
+        Assert.Equal(HttpStatusCode.OK, deleted.StatusCode);
+        var pulled = next!.Changes.Single().SevaType!;
+        Assert.NotNull(pulled.DeletedAt);
+        Assert.False(pulled.IsActive);
+        var push = await newBooking.Content.ReadFromJsonAsync<LedgerPushResponse>();
+        Assert.Equal(EntryStatus.Rejected, push!.Results.Single().Status);
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+        Assert.Null((await restored.Content.ReadFromJsonAsync<SevaTypeOut>())!.DeletedAt);
+    }
+
+    [Fact]
     public async Task Members_see_only_their_yatras_and_roles_are_enforced()
     {
         var (accounts, yatraId) = await NewYatraAsync();

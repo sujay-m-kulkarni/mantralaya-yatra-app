@@ -27,5 +27,5 @@ internal static class Mapping
         r.Id, r.ReversedEntryId, r.ReversedKind.ToWire(), r.Reason, r.RecordedBy, r.RecordedAt);
 
     public static SevaTypeOut ToOut(this SevaType s) => new(
-        s.Id, s.Code, s.Name, s.RatePaise, s.DailyLimit, s.RequiresSankalpa, s.IsActive, s.SortOrder);
+        s.Id, s.Code, s.Name, s.RatePaise, s.DailyLimit, s.RequiresSankalpa, s.IsActive, s.SortOrder, s.DeletedAt);
 }

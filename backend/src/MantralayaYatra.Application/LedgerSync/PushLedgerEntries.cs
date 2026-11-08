@@ -103,6 +103,12 @@ public sealed class PushLedgerEntries
             return Rejected(input.Id, kind, $"Unknown seva code \"{input.SevaCode}\".");
         }
 
+        // Bookings recorded before the seva was deleted (offline, sent later) are still accepted.
+        if (sevaType.DeletedAt is DateTimeOffset deletedAt && input.RecordedAt >= deletedAt)
+        {
+            return Rejected(input.Id, kind, $"{sevaType.Name} was deleted; it cannot be booked.");
+        }
+
         if (!yatra.Covers(input.SevaDate))
         {
             return Rejected(input.Id, kind, $"sevaDate must fall between {yatra.StartsOn:yyyy-MM-dd} and {yatra.EndsOn:yyyy-MM-dd}.");

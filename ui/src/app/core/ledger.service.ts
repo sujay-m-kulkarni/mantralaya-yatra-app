@@ -146,6 +146,22 @@ export class LedgerService {
     void this.sync();
   }
 
+  /** The accountant deletes a seva (kept on the server for 60 days, restorable). Pushes unsent bookings first. */
+  async deleteSevaType(code: string): Promise<SevaType> {
+    const yatra = this.requireYatra();
+    await this.sync();
+    const deleted = await this.api().deleteSevaType(yatra.id, code);
+    await this.sync();
+    return deleted;
+  }
+
+  async restoreSevaType(code: string): Promise<SevaType> {
+    const yatra = this.requireYatra();
+    const restored = await this.api().restoreSevaType(yatra.id, code);
+    await this.sync();
+    return restored;
+  }
+
   /** A day another screen wants the register to show next (the day of a seva just saved). */
   readonly focusDay = signal<string | null>(null);
 

@@ -26,6 +26,8 @@ public static class DependencyInjection
         services.AddScoped<ILedgerStore, EfLedgerStore>();
         services.AddScoped<IYatraDirectory, EfYatraDirectory>();
         services.AddScoped<IUserDirectory, EfUserDirectory>();
+        services.AddSingleton<DeletedSevaCleanup>();
+        services.AddHostedService(sp => sp.GetRequiredService<DeletedSevaCleanup>());
         services.AddHealthChecks().AddDbContextCheck<YatraDbContext>("database", tags: ["ready"]);
         return services;
     }

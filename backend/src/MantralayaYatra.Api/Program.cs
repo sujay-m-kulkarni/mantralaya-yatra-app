@@ -81,6 +81,8 @@ builder.Services.AddScoped<ListMyYatras>();
 builder.Services.AddScoped<AddMember>();
 builder.Services.AddScoped<ListMembers>();
 builder.Services.AddScoped<SaveSevaType>();
+builder.Services.AddScoped<DeleteSevaType>();
+builder.Services.AddScoped<RestoreSevaType>();
 builder.Services.AddScoped<ListSevaTypes>();
 builder.Services.AddScoped<PushLedgerEntries>();
 builder.Services.AddScoped<PullLedgerChanges>();

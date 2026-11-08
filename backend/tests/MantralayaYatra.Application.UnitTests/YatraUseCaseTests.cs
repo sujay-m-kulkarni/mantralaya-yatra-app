@@ -1,5 +1,7 @@
 using MantralayaYatra.Application.Common;
+using MantralayaYatra.Application.LedgerSync;
 using MantralayaYatra.Application.Yatras;
+using MantralayaYatra.Domain.Sevas;
 using MantralayaYatra.Domain.Yatras;
 
 namespace MantralayaYatra.Application.UnitTests;
@@ -13,6 +15,10 @@ public class YatraUseCaseTests
     private AddMember AddMember => new(_world.Directory, _world.Context, _world.Time);
 
     private SaveSevaType SaveSeva => new(_world.Store, _world.Context);
+
+    private DeleteSevaType DeleteSeva => new(_world.Store, _world.Context, _world.Time);
+
+    private RestoreSevaType RestoreSeva => new(_world.Store, _world.Context);
 
     [Fact]
     public async Task The_creator_becomes_the_accountant_and_starts_with_no_sevas()
@@ -131,5 +137,59 @@ public class YatraUseCaseTests
         var result = await SaveSeva.HandleAsync("SRV", new SevaTypeIn("Sarva Seva", 1, null, true, true, 2), CancellationToken.None);
 
         Assert.Equal(ErrorKind.Forbidden, result.Error!.Kind);
+    }
+
+    [Fact]
+    public async Task Deleting_a_seva_keeps_it_marked_deleted_and_phones_pull_the_change()
+    {
+        _world.SignInAs(MemberRole.Accounts);
+        var before = _world.Seva("HST").ServerSeq;
+
+        var deleted = await DeleteSeva.HandleAsync("HST", CancellationToken.None);
+
+        Assert.Equal(_world.Time.Now, deleted.Value.DeletedAt);
+        Assert.False(deleted.Value.IsActive);
+        Assert.True(_world.Seva("HST").ServerSeq > before);
+        Assert.Equal(_world.Time.Now.AddDays(SevaType.KeepDeletedDays), _world.Seva("HST").RemovableAfter);
+    }
+
+    [Fact]
+    public async Task A_deleted_seva_can_be_restored_and_its_code_is_not_reused_meanwhile()
+    {
+        _world.SignInAs(MemberRole.Accounts);
+        await DeleteSeva.HandleAsync("HST", CancellationToken.None);
+
+        var reuse = await SaveSeva.HandleAsync("HST", new SevaTypeIn("Another seva", 50100, null, true, true, 9), CancellationToken.None);
+        Assert.Equal(ErrorKind.Conflict, reuse.Error!.Kind);
+
+        var restored = await RestoreSeva.HandleAsync("HST", CancellationToken.None);
+        Assert.Null(restored.Value.DeletedAt);
+        Assert.True(restored.Value.IsActive);
+    }
+
+    [Fact]
+    public async Task Only_the_accountant_deletes_and_an_unknown_seva_is_not_found()
+    {
+        var volunteer = await DeleteSeva.HandleAsync("HST", CancellationToken.None);
+        Assert.Equal(ErrorKind.Forbidden, volunteer.Error!.Kind);
+
+        _world.SignInAs(MemberRole.Accounts);
+        var unknown = await DeleteSeva.HandleAsync("ZZZ", CancellationToken.None);
+        Assert.Equal(ErrorKind.NotFound, unknown.Error!.Kind);
+    }
+
+    [Fact]
+    public async Task A_deleted_seva_cannot_be_booked_but_bookings_recorded_before_the_delete_still_arrive()
+    {
+        _world.SignInAs(MemberRole.Accounts);
+        var before = World.Booking("SRV", recordedAt: _world.Time.Now.AddMinutes(-5));
+        await DeleteSeva.HandleAsync("SRV", CancellationToken.None);
+        var after = World.Booking("SRV", recordedAt: _world.Time.Now.AddMinutes(1));
+
+        var response = await _world.PushAsync([before, after]);
+
+        Assert.Equal(EntryStatus.Applied, response.Results[0].Status);
+        Assert.Equal(EntryStatus.Rejected, response.Results[1].Status);
+        Assert.Contains("was deleted", response.Results[1].Error);
     }
 }

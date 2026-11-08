@@ -11,6 +11,9 @@ public sealed partial class SevaType : YatraRow
 {
     public const int MaxNameLength = 60;
 
+    /// <summary>How long a deleted seva is kept before it is removed for good (only if it was never booked).</summary>
+    public const int KeepDeletedDays = 60;
+
     public Guid Id { get; set; }
 
     /// <summary>Two to five capital letters; the receipt prefix, e.g. SRV in SRV-0033.</summary>
@@ -31,6 +34,18 @@ public sealed partial class SevaType : YatraRow
     public bool IsActive { get; set; } = true;
 
     public int SortOrder { get; set; }
+
+    /// <summary>
+    /// When the accountant deleted it; null while it is in use. A deleted seva is hidden from booking and from the
+    /// Sevas screen but stays in the database: bookings made before keep their seva, and the accountant can restore it.
+    /// After <see cref="KeepDeletedDays"/> days a deleted seva that was never booked is removed for good.
+    /// </summary>
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public bool IsDeleted => DeletedAt is not null;
+
+    /// <summary>The first moment a deleted seva may be removed for good.</summary>
+    public DateTimeOffset? RemovableAfter => DeletedAt?.AddDays(KeepDeletedDays);
 
     public bool IsFullWith(int activeBookingsThatDay) => DailyLimit is int limit && activeBookingsThatDay >= limit;
 

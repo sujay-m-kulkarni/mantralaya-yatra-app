@@ -233,9 +233,14 @@ public sealed class SaveSevaType
         return await _store.InYatraTransactionAsync<Result<SevaTypeOut>>(async token =>
         {
             var sevaType = await _store.FindSevaTypeByCodeAsync(code, token);
+            if (sevaType is { IsDeleted: true })
+            {
+                return Error.Conflict("seva_deleted", $"{code} belongs to a deleted seva. Restore it, or use another code.");
+            }
+
             if (sevaType is null)
             {
-                if ((await _store.ListSevaTypesAsync(token)).Count >= MaxSevaTypes)
+                if ((await _store.ListSevaTypesAsync(token)).Count(t => !t.IsDeleted) >= MaxSevaTypes)
                 {
                     return Error.Validation("too_many_sevas", $"A yatra can have at most {MaxSevaTypes} sevas.");
                 }
@@ -252,6 +257,93 @@ public sealed class SaveSevaType
             sevaType.SortOrder = request.SortOrder;
             sevaType.ServerSeq = await _store.NextSeqAsync(token);
             await _store.SaveChangesAsync(token);
+            return sevaType.ToOut();
+        }, ct);
+    }
+}
+
+/// <summary>
+/// The accountant deletes a seva: a soft delete. It disappears from booking and the Sevas screen, its past bookings
+/// keep it, and it can be restored for <see cref="SevaType.KeepDeletedDays"/> days.
+/// </summary>
+public sealed class DeleteSevaType
+{
+    private readonly ILedgerStore _store;
+    private readonly IYatraContext _yatra;
+    private readonly TimeProvider _time;
+
+    public DeleteSevaType(ILedgerStore store, IYatraContext yatra, TimeProvider time)
+    {
+        _store = store;
+        _yatra = yatra;
+        _time = time;
+    }
+
+    public Task<Result<SevaTypeOut>> HandleAsync(string code, CancellationToken ct) =>
+        SevaTypeChange.ApplyAsync(_store, _yatra, code, sevaType =>
+        {
+            if (sevaType.IsDeleted)
+            {
+                return false;
+            }
+
+            sevaType.DeletedAt = _time.GetUtcNow();
+            sevaType.IsActive = false;
+            return true;
+        }, ct);
+}
+
+/// <summary>Brings back a deleted seva while it is still kept.</summary>
+public sealed class RestoreSevaType
+{
+    private readonly ILedgerStore _store;
+    private readonly IYatraContext _yatra;
+
+    public RestoreSevaType(ILedgerStore store, IYatraContext yatra)
+    {
+        _store = store;
+        _yatra = yatra;
+    }
+
+    public Task<Result<SevaTypeOut>> HandleAsync(string code, CancellationToken ct) =>
+        SevaTypeChange.ApplyAsync(_store, _yatra, code, sevaType =>
+        {
+            if (!sevaType.IsDeleted)
+            {
+                return false;
+            }
+
+            sevaType.DeletedAt = null;
+            sevaType.IsActive = true;
+            return true;
+        }, ct);
+}
+
+internal static class SevaTypeChange
+{
+    /// <summary>Accountant only. Applies <paramref name="change"/>; when it changed something, the seva gets a new sequence number so phones pull it.</summary>
+    public static async Task<Result<SevaTypeOut>> ApplyAsync(
+        ILedgerStore store, IYatraContext yatra, string code, Func<SevaType, bool> change, CancellationToken ct)
+    {
+        if (!yatra.Role.Allows(MemberRole.Accounts))
+        {
+            return Error.Forbidden("Only the accountant can change sevas.");
+        }
+
+        return await store.InYatraTransactionAsync<Result<SevaTypeOut>>(async token =>
+        {
+            var sevaType = await store.FindSevaTypeByCodeAsync(code, token);
+            if (sevaType is null)
+            {
+                return Error.NotFound("seva_not_found", $"There is no seva {code}.");
+            }
+
+            if (change(sevaType))
+            {
+                sevaType.ServerSeq = await store.NextSeqAsync(token);
+                await store.SaveChangesAsync(token);
+            }
+
             return sevaType.ToOut();
         }, ct);
     }

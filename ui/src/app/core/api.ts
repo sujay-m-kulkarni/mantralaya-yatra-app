@@ -65,6 +65,14 @@ export class ApiClient {
     return this.call('PUT', `/yatras/${yatraId}/seva-types/${encodeURIComponent(code)}`, body);
   }
 
+  deleteSevaType(yatraId: string, code: string): Promise<SevaType> {
+    return this.call('DELETE', `/yatras/${yatraId}/seva-types/${encodeURIComponent(code)}`);
+  }
+
+  restoreSevaType(yatraId: string, code: string): Promise<SevaType> {
+    return this.call('POST', `/yatras/${yatraId}/seva-types/${encodeURIComponent(code)}/restore`);
+  }
+
   push(yatraId: string, body: PushRequest): Promise<PushResponse> {
     return this.call('POST', `/yatras/${yatraId}/sync/push`, body);
   }

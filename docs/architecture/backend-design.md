@@ -56,6 +56,8 @@ Adding members (`POST /yatras/{id}/members`) exists in the API but is not used b
 
 ## Data
 
+Sevas are soft-deleted (`seva_type.deleted_at`): kept with their bookings, restorable, and a hosted job (`DeletedSevaCleanup`, at start and daily) removes for good those deleted over 60 days ago that were never booked.
+
 Tables (snake_case): `app_user`, `yatra`, `yatra_member`, `seva_type`, `seva_booking`, `seva_payment`, `ledger_reversal`, `receipt_counter`, and the sequence `sync_seq`. Ledger tables are keyed by `(yatra_id, id)` because ids come from phones. A unique index on `ledger_reversal (yatra_id, reversed_entry_id)` holds the "reversed at most once" rule in the database too, and one on `seva_booking (yatra_id, receipt_no)` keeps final receipts unique.
 
 ## Testing
