@@ -8,9 +8,11 @@ namespace MantralayaYatra.Api.IntegrationTests;
 
 public class SevaRegisterTests(ApiFactory api) : IClassFixture<ApiFactory>
 {
-    private static readonly DateOnly Start = new(2026, 12, 1);
-    private static readonly DateOnly SevaDay = new(2026, 12, 4);
-    private static readonly DateTimeOffset Morning = new(2026, 12, 1, 9, 0, 0, TimeSpan.FromHours(5.5));
+    // Dates follow the real clock: the server refuses entries recorded in the future.
+    private static readonly DateTimeOffset Morning = DateTimeOffset.UtcNow.AddMinutes(-30).ToOffset(TimeSpan.FromHours(5.5));
+    private static readonly DateOnly Start = DateOnly.FromDateTime(Morning.DateTime);
+    private static readonly DateOnly SevaDay = Start.AddDays(3);
+    private static readonly string SevaDayText = SevaDay.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
     [Fact]
     public async Task A_volunteer_books_and_takes_payment_and_the_accountant_sees_it_in_the_register()
@@ -24,14 +26,14 @@ public class SevaRegisterTests(ApiFactory api) : IClassFixture<ApiFactory>
         Assert.All(pushed.Results, r => Assert.Equal(EntryStatus.Applied, r.Status));
         Assert.Equal("SRV-0001", pushed.Results[0].ReceiptNo);
 
-        var register = await accounts.GetFromJsonAsync<DailyRegisterResponse>($"{Base(yatraId)}/register?date=2026-12-04");
+        var register = await accounts.GetFromJsonAsync<DailyRegisterResponse>($"{Base(yatraId)}/register?date={SevaDayText}");
         var line = Assert.Single(register!.Lines);
         Assert.Equal("SRV-0001", line.ReceiptNo);
         Assert.Equal("Vasishta", line.Sankalpa!.Gotra);
         Assert.Equal(0, line.PendingPaise);
         Assert.Equal(4, register.DayNumber);
 
-        var priest = await accounts.GetFromJsonAsync<PriestListResponse>($"{Base(yatraId)}/register/priest-list?date=2026-12-04");
+        var priest = await accounts.GetFromJsonAsync<PriestListResponse>($"{Base(yatraId)}/register/priest-list?date={SevaDayText}");
         Assert.Equal("Venkatesh Kulkarni", priest!.Sevas.Single().Entries.Single().DevoteeName);
     }
 
@@ -78,7 +80,7 @@ public class SevaRegisterTests(ApiFactory api) : IClassFixture<ApiFactory>
 
         Assert.Equal(EntryStatus.Rejected, byVolunteer.Results.Single().Status);
         Assert.Equal(EntryStatus.Applied, byAccounts.Results.Single().Status);
-        var register = await accounts.GetFromJsonAsync<DailyRegisterResponse>($"{Base(yatraId)}/register?date=2026-12-04");
+        var register = await accounts.GetFromJsonAsync<DailyRegisterResponse>($"{Base(yatraId)}/register?date={SevaDayText}");
         Assert.True(register!.Lines.Single().IsReversed);
         Assert.Equal(booking.AmountPaise, register.Totals.RefundDuePaise);
     }
@@ -107,9 +109,9 @@ public class SevaRegisterTests(ApiFactory api) : IClassFixture<ApiFactory>
         var viewer = await AddMemberAsync(accounts, yatraId, "viewer");
         var stranger = api.ClientFor($"stranger-{Guid.NewGuid():N}@example.com");
 
-        var strangerRegister = await stranger.GetAsync($"{Base(yatraId)}/register?date=2026-12-04");
+        var strangerRegister = await stranger.GetAsync($"{Base(yatraId)}/register?date={SevaDayText}");
         var viewerPush = await viewer.PostAsJsonAsync($"{Base(yatraId)}/sync/push", new LedgerPushRequest(Guid.NewGuid(), [Booking("SRV")], null, null));
-        var viewerRegister = await viewer.GetAsync($"{Base(yatraId)}/register?date=2026-12-04");
+        var viewerRegister = await viewer.GetAsync($"{Base(yatraId)}/register?date={SevaDayText}");
         var viewerSeva = await viewer.PutAsJsonAsync($"{Base(yatraId)}/seva-types/SRV", new SevaTypeIn("Sarva Seva", 1, null, true, true, 2));
 
         Assert.Equal(HttpStatusCode.NotFound, strangerRegister.StatusCode);
@@ -128,9 +130,9 @@ public class SevaRegisterTests(ApiFactory api) : IClassFixture<ApiFactory>
         var other = await PushAsync(second, secondId, new LedgerPushRequest(Guid.NewGuid(), [Booking("SRV")], null, null));
 
         Assert.Equal("SRV-0001", other.Results.Single().ReceiptNo);
-        var register = await second.GetFromJsonAsync<DailyRegisterResponse>($"{Base(secondId)}/register?date=2026-12-04");
+        var register = await second.GetFromJsonAsync<DailyRegisterResponse>($"{Base(secondId)}/register?date={SevaDayText}");
         Assert.Single(register!.Lines);
-        var crossed = await second.GetAsync($"{Base(firstId)}/register?date=2026-12-04");
+        var crossed = await second.GetAsync($"{Base(firstId)}/register?date={SevaDayText}");
         Assert.Equal(HttpStatusCode.NotFound, crossed.StatusCode);
     }
 
