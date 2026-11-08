@@ -22,7 +22,7 @@ A build pointed at an https server refuses plain-http traffic and mixed content;
 The app has one user, you. Two things protect the books:
 
 - **The API key** lets the Azure server trust your app. It is a long random value built into the APK when it is made; you never type it. `infra\azure-setup.ps1` creates it and writes it to `ui\app.secrets.json`, which is git-ignored. Laptop builds read it from there; GitHub release builds read the `API_KEY` secret. A build without it warns *no API key for an https server* and the app gets "did not accept this app's key". Because the key is inside the APK, **don't share your APK file** with anyone.
-- **The fingerprint lock** keeps the books from anyone holding your phone. The app asks for your fingerprint, face or phone PIN when it opens, and again after 2 minutes in the background (a quick switch to WhatsApp to send a receipt does not lock it). The fingerprint is checked by Android and never leaves the phone. If the phone has no screen lock at all, the app cannot lock; *This build* on the Set up screen says so.
+- **The fingerprint lock** keeps the books from anyone holding your phone. The app asks for your fingerprint, face or phone PIN when it opens, and again after 2 minutes in the background (a quick switch to another app does not lock it). The fingerprint is checked by Android and never leaves the phone. If the phone has no screen lock at all, the app cannot lock; *This build* on the Set up screen says so.
 
 ## One-time laptop setup
 

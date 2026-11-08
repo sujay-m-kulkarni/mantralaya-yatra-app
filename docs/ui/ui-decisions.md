@@ -19,6 +19,5 @@ Rates, names and limits in the mockups are sample data, not the group's real fig
 
 ## To decide
 
-- Receipt layout for WhatsApp (image or PDF).
 - Kannada / Telugu / Hindi labels for volunteers.
 - Whether the app follows Money Trail's dark theme or keeps this light one.

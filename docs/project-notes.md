@@ -12,7 +12,7 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 - Sevas (Sarva Samarpana Seva, Sarva Seva, Hastodaka, Ashtottara and any others) are created by the accountant on the Sevas screen, each with a fixed price. A new yatra starts with none.
 - Each booking carries the devotee, the seva day and sankalpa details (on behalf of, gotra, nakshatra, rashi, occasion) for the priest.
 - Payments by cash, UPI or bank; part payments allowed; unpaid bookings show as pending.
-- A numbered receipt per booking, shared on WhatsApp.
+- A numbered receipt per booking, kept in the register. The app does not send anything to WhatsApp.
 - A daily register (collections by mode, pending, slot usage) and a printable priest's list.
 
 **Later**
@@ -29,7 +29,7 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 |---|---|
 | Stack | Same as Money Trail: Ionic + Angular + Capacitor (in `ui/`), ASP.NET Core minimal APIs in four layers, SQL Server / Azure SQL |
 | Phone storage | Rows kept as JSON per collection in SQLite (Money Trail's native bridge); localStorage when run in a browser |
-| Receipts | Text receipt sent on WhatsApp straight to the devotee's number when given, otherwise via the share sheet |
+| Receipts | Numbered in the register only; the app is not linked to WhatsApp and sends nothing |
 | Approach | Offline-first: phones record without network and sync later |
 | Repository | Its own repo, `mantralaya-yatra-app` (not inside Money Trail) |
 | Data ownership | Shared by a yatra's members, not owned by one user. Every row carries the yatra id |
@@ -57,7 +57,7 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 ## Next steps
 
 1. Generate the first EF migration on a laptop (see `backend/README.md`) and turn on the migration check in CI.
-2. ~~Ionic app: Seva Register and Book a seva screens, local SQLite, push and pull.~~ Built in `ui/`, with text receipts on WhatsApp.
+2. ~~Ionic app: Seva Register and Book a seva screens, local SQLite, push and pull.~~ Built in `ui/`.
 3. ~~Sign-in~~ API key + fingerprint lock (no Entra).
 4. ~~CI/CD pipelines~~ Built (`docs/guides/build-pipeline.md`). One-time setup left: Azure resources and the `production` environment (`docs/guides/azure-setup.md`), the APK signing key, the two release labels.
 5. Pilgrim register, then expenses and cash wallets.

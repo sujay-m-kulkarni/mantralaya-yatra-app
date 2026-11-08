@@ -55,7 +55,7 @@ import { GOTRAS, NAKSHATRAS, OTHER_GOTRA, RASHIS } from '../core/sankalpa-lists'
             <input id="devotee" name="devotee" [(ngModel)]="devoteeName" autocomplete="off" required />
           </div>
           <div class="field">
-            <label for="phone">Mobile (for a WhatsApp receipt later)</label>
+            <label for="phone">Mobile (optional)</label>
             <input id="phone" name="phone" type="tel" inputmode="tel" [(ngModel)]="devoteePhone" placeholder="98450 12345" />
           </div>
         </fieldset>

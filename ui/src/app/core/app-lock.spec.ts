@@ -67,7 +67,7 @@ describe('AppLockService', () => {
     expect(bio.prompts).toBe(0);
   });
 
-  it('a quick trip to WhatsApp does not lock; a long absence does', async () => {
+  it('a quick switch to another app does not lock; a long absence does', async () => {
     lock.locked.set(false);
     lock.wentToBackground();
     now += RELOCK_AFTER_MS - 1000;
