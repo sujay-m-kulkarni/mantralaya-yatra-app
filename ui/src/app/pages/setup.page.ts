@@ -1,13 +1,14 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
 
 import { ApiError } from '../core/api';
 import { formatDay } from '../core/dates';
 import { LedgerService } from '../core/ledger.service';
 import { YatraSummary } from '../core/models';
-import { APP_VERSION, DEFAULT_SERVER } from '../core/version';
+import { APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/version';
 
 /**
  * First run, or changing yatra: which server, who you are, and which yatra this phone keeps books for.
@@ -86,7 +87,17 @@ import { APP_VERSION, DEFAULT_SERVER } from '../core/version';
           </form>
         }
 
-        <p class="muted version">Version {{ version }}</p>
+        <details class="card build">
+          <summary>This build</summary>
+          <dl>
+            <dt>Version</dt><dd>{{ build.version }}</dd>
+            <dt>Commit</dt><dd>{{ build.commit }}</dd>
+            <dt>Built</dt><dd>{{ build.builtAt }}</dd>
+            <dt>Default server</dt><dd>{{ build.server }}</dd>
+            <dt>Running on</dt><dd>{{ build.platform }}</dd>
+            <dt>Phone storage</dt><dd>{{ build.storage }}</dd>
+          </dl>
+        </details>
       </div>
     </ion-content>
   `,
@@ -99,7 +110,11 @@ import { APP_VERSION, DEFAULT_SERVER } from '../core/version';
     .yatra[aria-current='true'] { border: 2px solid var(--my-accent); background: var(--my-accent-soft); }
     .yatra-name { font-weight: 700; font-size: 15px; }
     .yatra .pill { grid-row: 1 / span 2; grid-column: 2; align-self: center; text-transform: capitalize; }
-    .version { text-align: center; }
+    .build { padding: 12px 16px; font-size: 13px; }
+    .build summary { font-weight: 600; cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+    .build dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 8px 0 0; }
+    .build dt { color: var(--my-muted); }
+    .build dd { margin: 0; word-break: break-all; }
   `,
 })
 export class SetupPage implements OnInit {
@@ -112,7 +127,15 @@ export class SetupPage implements OnInit {
   newName = '';
   startsOn = '';
   endsOn = '';
-  readonly version = APP_VERSION;
+  /** Which build is installed: handy when several APKs are going around the volunteers' phones. */
+  readonly build = {
+    version: APP_VERSION,
+    commit: APP_COMMIT,
+    builtAt: new Date(BUILT_AT).toLocaleString('en-IN'),
+    server: DEFAULT_SERVER,
+    platform: Capacitor.getPlatform(),
+    storage: Capacitor.getPlatform() === 'android' ? 'SQLite' : 'Browser (localStorage)',
+  };
 
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);

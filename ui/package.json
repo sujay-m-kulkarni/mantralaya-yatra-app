@@ -15,7 +15,9 @@
     "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI",
     "android:sync": "npm run build && cap sync android",
     "android:run": "npm run build && cap sync android && cap run android",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "android:apk": "node scripts/android-apk.mjs",
+    "android:apk:release": "node scripts/android-apk.mjs --release"
   },
   "prettier": {
     "printWidth": 100,

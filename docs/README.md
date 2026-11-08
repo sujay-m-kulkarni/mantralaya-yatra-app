@@ -9,5 +9,6 @@
 | [ui/ui-decisions.md](ui/ui-decisions.md) | Screens designed so far and where the mockups are |
 | [guides/build-pipeline.md](guides/build-pipeline.md) | The API and app pipelines: tests, approvals, deploys, releases, versions |
 | [guides/azure-setup.md](guides/azure-setup.md) | One-time Azure and GitHub setup for deploying the API |
+| [guides/android-setup.md](guides/android-setup.md) | Laptop and phone setup, running on a phone, making debug and release APK files, debugging |
 
 Diagrams are written in Mermaid, which GitHub and most Markdown viewers render.

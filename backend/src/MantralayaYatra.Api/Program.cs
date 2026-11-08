@@ -36,7 +36,7 @@ if (devSignIn)
     authentication.AddDevSignIn();
 }
 
-// The phone app calls from inside its web view (origin http://localhost on Android), and in development
+// The phone app calls from inside its web view (origin https://localhost on Android), and in development
 // from "npm start" (4200) or "ionic serve" (8100). Origins are configuration so Azure can add more without a build.
 var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
 builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy =>

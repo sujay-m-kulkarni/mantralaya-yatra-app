@@ -41,13 +41,14 @@ npm start            # http://localhost:4200
 
 On the Set up screen leave the server as `http://localhost:5180` and enter any name and email. Sign-in uses the API's Development header for now.
 
-On a phone (Android Studio and a USB-connected phone):
+On a phone, or to make an APK file to install:
 
 ```
-npm run android:run
+npm run android:run      # build, install and open on a USB-connected phone
+npm run android:apk      # an APK file in ui/apk/, no phone needed
 ```
 
-Use your laptop's Wi-Fi address as the server (e.g. `http://192.168.1.20:5180`), and start the API with `--urls http://0.0.0.0:5180` so the phone can reach it.
+Phone and laptop setup, signed release APKs, installing from GitHub Releases and debugging: [docs/guides/android-setup.md](../docs/guides/android-setup.md).
 
 ## Tests
 
