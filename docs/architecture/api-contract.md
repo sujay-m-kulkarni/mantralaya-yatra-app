@@ -14,6 +14,8 @@ All `/api/v1` endpoints need the app's key in the `X-Api-Key` header (the app ha
 | `POST /yatras/{id}/members` | Accounts | Adds a member by email |
 | `GET /yatras/{id}/seva-types` | Viewer | The yatra's sevas |
 | `PUT /yatras/{id}/seva-types/{code}` | Accounts | Creates or updates a seva: name, rate (required: every seva has a price), daily limit, sankalpa, active, order |
+| `DELETE /yatras/{id}/seva-types/{code}` | Accounts | Soft delete: sets `deletedAt`, hides it from booking (new bookings recorded after it are rejected), keeps it and its bookings. A deleted seva never booked is removed for good after 60 days |
+| `POST /yatras/{id}/seva-types/{code}/restore` | Accounts | Brings back a deleted seva while it is kept. Its code cannot be reused while it is deleted |
 | `POST /yatras/{id}/sync/push` | Volunteer | Bookings, payments, reversals from one phone |
 | `GET /yatras/{id}/sync/pull?after=&limit=` | Viewer | Changes after the cursor |
 | `GET /yatras/{id}/register?date=` | Viewer | One day's register |

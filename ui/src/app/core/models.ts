@@ -23,6 +23,8 @@ export interface SevaType {
   requiresSankalpa: boolean;
   isActive: boolean;
   sortOrder: number;
+  /** When the accountant deleted it (soft delete); kept and restorable for 60 days. */
+  deletedAt?: string | null;
 }
 
 /**

@@ -222,7 +222,7 @@ export class BookPage implements OnInit {
 
   readonly sevas = computed(() =>
     sortedSevaTypes(this.ledger.ledger().sevaTypes)
-      .filter((t) => t.isActive)
+      .filter((t) => t.isActive && !t.deletedAt)
       .map((type) => {
         const count = activeCount(this.ledger.ledger(), type.code, this.day());
         return { type, count, full: isFull(type, count) };

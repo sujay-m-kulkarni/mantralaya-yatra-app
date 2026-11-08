@@ -55,7 +55,7 @@ import { SyncChipComponent } from '../core/sync-chip.component';
           <div class="banner warn">{{ ledger.status().message }}</div>
         }
 
-        @if (ledger.ledger().sevaTypes.length === 0) {
+        @if (!hasSevas()) {
           <div class="banner info">
             No sevas yet. @if (ledger.isAccounts()) { <a routerLink="/sevas">Create the sevas and their prices</a> before booking. } @else { The accountant creates them. }
           </div>
@@ -207,6 +207,7 @@ export class RegisterPage {
   readonly ledger = inject(LedgerService);
 
   private readonly yatra = computed(() => this.ledger.yatra()!);
+  readonly hasSevas = computed(() => this.ledger.ledger().sevaTypes.some((t) => !t.deletedAt));
   readonly day = signal(clampDay(istDay(new Date()), this.yatra().startsOn, this.yatra().endsOn));
 
   constructor() {

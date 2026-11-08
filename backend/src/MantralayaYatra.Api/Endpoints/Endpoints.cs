@@ -49,6 +49,14 @@ public static class YatraEndpoints
                 (await useCase.HandleAsync(code, request, ct)).ToHttpResult())
             .WithName("SaveSevaType")
             .WithSummary("Accountant only. Creates or updates a seva: name, rate, daily limit, sankalpa, active.");
+        sevas.MapDelete("/{code}", async (string code, DeleteSevaType useCase, CancellationToken ct) =>
+                (await useCase.HandleAsync(code, ct)).ToHttpResult())
+            .WithName("DeleteSevaType")
+            .WithSummary("Accountant only. Soft delete: hidden from booking, kept with its bookings, restorable for 60 days.");
+        sevas.MapPost("/{code}/restore", async (string code, RestoreSevaType useCase, CancellationToken ct) =>
+                (await useCase.HandleAsync(code, ct)).ToHttpResult())
+            .WithName("RestoreSevaType")
+            .WithSummary("Accountant only. Brings back a deleted seva.");
 
         var sync = yatra.MapGroup("/sync").WithTags("Sync");
         sync.MapPost("/push", async (LedgerPushRequest request, PushLedgerEntries useCase, CancellationToken ct) =>
