@@ -63,11 +63,15 @@ $answer = Read-Host "Create the resources in this subscription? (y/n)"
 if ($answer -ne 'y') { Write-Host 'Stopped. Choose another with: az account set --subscription <name>'; exit 1 }
 
 Step "Checking the .NET 10 runtime name"
+# The list may say "DOTNETCORE|10.0" or "DOTNETCORE:10.0"; az webapp create accepts either separator.
+# The colon form is always passed, because on Windows az is a .cmd file and cmd.exe would treat "|" as a pipe.
 $runtimes = (Invoke-AzCli webapp list-runtimes --os-type linux -o tsv) -join "`n"
-$runtime = 'DOTNETCORE:10.0'
-if ($runtimes -notmatch [regex]::Escape($runtime)) {
-  throw "App Service does not list $runtime. Available: $(($runtimes -split "`n" | Select-String DOTNET) -join ', ')"
+$found = [regex]::Match($runtimes, '(?i)\bDOTNETCORE[:|]10\.0\b')
+if (-not $found.Success) {
+  throw "App Service does not list .NET 10. Available: $(($runtimes -split "`n" | Select-String DOTNET) -join ', ')"
 }
+$runtime = 'DOTNETCORE:10.0'
+Write-Host "Found $($found.Value); creating the web app with $runtime"
 
 Step "Resource group $rg"
 Invoke-AzCli group create --name $rg --location $Location --output none
