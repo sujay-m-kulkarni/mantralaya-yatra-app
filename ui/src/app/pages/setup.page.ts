@@ -81,7 +81,7 @@ import { API_KEY, APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../c
 
           <form class="card form" (ngSubmit)="create()">
             <h2>Start a new yatra</h2>
-            <p class="muted">You become its accountant. The four sevas are added without rates; you set those.</p>
+            <p class="muted">You become its accountant. Then create its sevas, each with its price, from the Sevas screen.</p>
             <div class="field">
               <label for="yname">Name</label>
               <input id="yname" name="yname" [(ngModel)]="newName" placeholder="Mantralaya Yatra 2026" required />

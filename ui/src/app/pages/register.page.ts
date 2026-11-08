@@ -55,6 +55,12 @@ import { SyncChipComponent } from '../core/sync-chip.component';
           <div class="banner warn">{{ ledger.status().message }}</div>
         }
 
+        @if (ledger.ledger().sevaTypes.length === 0) {
+          <div class="banner info">
+            No sevas yet. @if (ledger.isAccounts()) { <a routerLink="/sevas">Create the sevas and their prices</a> before booking. } @else { The accountant creates them. }
+          </div>
+        }
+
         <section class="summary" aria-label="Collected today">
           <div class="summary-top">
             <div>
@@ -99,7 +105,10 @@ import { SyncChipComponent } from '../core/sync-chip.component';
         <section aria-label="Bookings" class="lines">
           <div class="lines-head">
             <h2>{{ filterName() }}</h2>
-            <a class="link" [routerLink]="['/priest-list']" [queryParams]="{ date: day() }">Priest list</a>
+            <span class="links">
+              @if (ledger.isAccounts()) { <a class="link" routerLink="/sevas">Sevas</a> }
+              <a class="link" [routerLink]="['/priest-list']" [queryParams]="{ date: day() }">Priest list</a>
+            </span>
           </div>
           @for (l of lines(); track l.booking.id) {
             <a class="card line" [routerLink]="['/booking', l.booking.id]" [class.reversed]="l.isReversed">
@@ -180,6 +189,7 @@ import { SyncChipComponent } from '../core/sync-chip.component';
     .lines-head { display: flex; justify-content: space-between; align-items: baseline; }
     .lines-head h2 { margin: 0; font-size: 15px; font-weight: 700; font-family: Inter, sans-serif; }
     .link { font-size: 14px; font-weight: 600; color: var(--my-accent); padding: 8px 0; }
+    .links { display: flex; gap: 16px; }
     .line { padding: 12px; display: flex; gap: 12px; align-items: flex-start; text-decoration: none; color: inherit; }
     .line.reversed .devotee, .line.reversed .amount { text-decoration: line-through; color: var(--my-muted); }
     .line-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }

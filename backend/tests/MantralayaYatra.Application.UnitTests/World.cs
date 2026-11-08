@@ -28,11 +28,29 @@ internal sealed class World
             Role = MemberRole.Volunteer,
         });
 
-        foreach (var sevaType in SevaType.DefaultsFor(Yatra.Id))
+        foreach (var sevaType in FourSevas(Yatra.Id))
         {
             Store.Seed(sevaType);
         }
     }
+
+    /// <summary>The group's four sevas, as the accountant would create them. Rates and limits are left unset so each test sets its own.</summary>
+    public static IReadOnlyList<SevaType> FourSevas(Guid yatraId) =>
+    [
+        NewSeva(yatraId, "SSA", "Sarva Samarpana Seva", 1),
+        NewSeva(yatraId, "SRV", "Sarva Seva", 2),
+        NewSeva(yatraId, "HST", "Hastodaka", 3),
+        NewSeva(yatraId, "AST", "Ashtottara", 4),
+    ];
+
+    private static SevaType NewSeva(Guid yatraId, string code, string name, int order) => new()
+    {
+        Id = Guid.NewGuid(),
+        YatraId = yatraId,
+        Code = code,
+        Name = name,
+        SortOrder = order,
+    };
 
     public FakeUser User { get; } = new();
 

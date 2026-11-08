@@ -102,23 +102,6 @@ public class SevaTypeTests
     [Fact]
     public void No_limit_is_never_full() =>
         Assert.False(new SevaType { DailyLimit = null }.IsFullWith(1000));
-
-    [Fact]
-    public void The_four_sevas_are_seeded_without_rates_or_limits()
-    {
-        var yatraId = Guid.NewGuid();
-        var defaults = SevaType.DefaultsFor(yatraId);
-
-        Assert.Equal(new[] { "SSA", "SRV", "HST", "AST" }, defaults.Select(s => s.Code));
-        Assert.All(defaults, s =>
-        {
-            Assert.Equal(yatraId, s.YatraId);
-            Assert.Null(s.RatePaise);
-            Assert.Null(s.DailyLimit);
-            Assert.True(s.IsActive);
-            Assert.True(SevaType.IsValidCode(s.Code));
-        });
-    }
 }
 
 public class YatraTests

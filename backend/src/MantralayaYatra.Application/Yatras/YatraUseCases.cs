@@ -74,7 +74,8 @@ public sealed class CreateYatra
             AddedAt = now,
         };
 
-        await _directory.CreateAsync(yatra, founder, SevaType.DefaultsFor(yatra.Id), ct);
+        // No sevas to start with: the accountant creates each one, with its price, on the Sevas screen.
+        await _directory.CreateAsync(yatra, founder, [], ct);
         return new YatraOut(yatra.Id, yatra.Name, yatra.StartsOn, yatra.EndsOn, MemberRole.Accounts.ToWire());
     }
 }
@@ -213,9 +214,15 @@ public sealed class SaveSevaType
             return Error.Validation("name_invalid", $"name is required, up to {SevaType.MaxNameLength} characters.");
         }
 
+        // Every seva has a fixed price: the phone fills the booking amount from it and does not let it change.
+        if (request.RatePaise is null)
+        {
+            return Error.Validation("rate_required", "Every seva needs a price (ratePaise).");
+        }
+
         if (request.RatePaise is <= 0 or > PushLedgerEntries.MaxAmountPaise)
         {
-            return Error.Validation("rate_invalid", $"ratePaise must be between 1 and {PushLedgerEntries.MaxAmountPaise}, or null.");
+            return Error.Validation("rate_invalid", $"ratePaise must be between 1 and {PushLedgerEntries.MaxAmountPaise}.");
         }
 
         if (request.DailyLimit is < 1 or > 10_000)

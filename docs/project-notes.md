@@ -9,7 +9,7 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 ## Scope
 
 **Seva Register (built first)**
-- Four sevas: Sarva Samarpana Seva, Sarva Seva, Hastodaka, Ashtottara. The accountant can add more.
+- Sevas (Sarva Samarpana Seva, Sarva Seva, Hastodaka, Ashtottara and any others) are created by the accountant on the Sevas screen, each with a fixed price. A new yatra starts with none.
 - Each booking carries the devotee, the seva day and sankalpa details (on behalf of, gotra, nakshatra, rashi, occasion) for the priest.
 - Payments by cash, UPI or bank; part payments allowed; unpaid bookings show as pending.
 - A numbered receipt per booking, shared on WhatsApp.
@@ -41,7 +41,7 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 | Server access | A long random API key built into the app and sent with every call; stored in the web app setting and the build's secrets, never in the repository. No Azure user directory, no email (Entra External ID was tried and dropped) |
 | App lock | The phone's fingerprint, face or PIN unlocks the app at start and after 2 minutes away |
 | Money | Integer paise on the phone, on the wire and on the server |
-| Seva rates | Not assumed. Seeded empty; the accountant enters the real rates and limits |
+| Seva rates | Every seva has a fixed price, set when the accountant creates it. A booking takes that price and it cannot be changed on the booking form |
 | Testing | Unit, integration (SQL Server in Docker) and architecture tests, as in Money Trail |
 | CI/CD | Two pipelines. API: tests on PRs; on merge, deploy to Azure App Service + Azure SQL after the owner's approval, OIDC sign-in, migrations in the pipeline, tag `api-vX.Y.Z`. App: tests and debug APK on PRs; signed APK as a GitHub Release on merge, tag `app-vX.Y.Z`. Versions from PR labels, per part |
 | Git workflow | Feature branch `YYYY-MM-DD-<short-name>`, pull request to `main`, owner approves; each PR states the version it builds |

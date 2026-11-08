@@ -9,11 +9,11 @@ All `/api/v1` endpoints need the app's key in the `X-Api-Key` header (the app ha
 | Method and path | Role | What it does |
 |---|---|---|
 | `GET /yatras` | any signed-in | Your yatras and your role in each |
-| `POST /yatras` | any signed-in | Creates a yatra; you become its accountant; the four sevas are seeded without rates |
+| `POST /yatras` | any signed-in | Creates a yatra; you become its accountant. It starts with no sevas |
 | `GET /yatras/{id}/members` | Viewer | Members, roles, whether they have signed in |
 | `POST /yatras/{id}/members` | Accounts | Adds a member by email |
 | `GET /yatras/{id}/seva-types` | Viewer | The yatra's sevas |
-| `PUT /yatras/{id}/seva-types/{code}` | Accounts | Creates or updates a seva: name, rate, daily limit, sankalpa, active, order |
+| `PUT /yatras/{id}/seva-types/{code}` | Accounts | Creates or updates a seva: name, rate (required: every seva has a price), daily limit, sankalpa, active, order |
 | `POST /yatras/{id}/sync/push` | Volunteer | Bookings, payments, reversals from one phone |
 | `GET /yatras/{id}/sync/pull?after=&limit=` | Viewer | Changes after the cursor |
 | `GET /yatras/{id}/register?date=` | Viewer | One day's register |

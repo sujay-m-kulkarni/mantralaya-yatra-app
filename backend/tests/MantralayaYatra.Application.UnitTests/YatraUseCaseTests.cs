@@ -15,7 +15,7 @@ public class YatraUseCaseTests
     private SaveSevaType SaveSeva => new(_world.Store, _world.Context);
 
     [Fact]
-    public async Task The_creator_becomes_the_accountant_and_the_four_sevas_are_seeded()
+    public async Task The_creator_becomes_the_accountant_and_starts_with_no_sevas()
     {
         var result = await Create.HandleAsync(
             new CreateYatraRequest("  Mantralaya Yatra 2027 ", new DateOnly(2027, 1, 10), new DateOnly(2027, 1, 15), "Sujay"),
@@ -28,7 +28,7 @@ public class YatraUseCaseTests
         Assert.Equal(MemberRole.Accounts, founder.Role);
         Assert.Equal(_world.User.UserId, founder.UserId);
         Assert.Equal("Sujay", founder.DisplayName);
-        Assert.Equal(4, _world.Directory.SeededSevaTypes.Count);
+        Assert.Empty(_world.Directory.SeededSevaTypes);
     }
 
     [Fact]
@@ -113,6 +113,7 @@ public class YatraUseCaseTests
 
     [Theory]
     [InlineData("srv", 100100L, null)]
+    [InlineData("SRV", null, null)]
     [InlineData("SRV", 0L, null)]
     [InlineData("SRV", 100100L, 0)]
     public async Task Seva_changes_are_validated(string code, long? rate, int? limit)
