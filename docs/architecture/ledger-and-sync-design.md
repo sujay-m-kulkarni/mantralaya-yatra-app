@@ -21,7 +21,7 @@ Two phones booking offline cannot agree on the next number, so there are two:
 
 | | Made by | Example | When |
 |---|---|---|---|
-| Draft | The phone | `SRV-D-RAM-0007` | Printed on the WhatsApp receipt at once, even offline |
+| Draft | The phone | `SRV-D-RAM-0007` | Shown on the booking at once, even offline |
 | Final | The server | `SRV-0033` | Issued when the booking syncs; the phone replaces the draft |
 
 Final numbers run per seva per yatra, without gaps or repeats, because they are issued inside the yatra's lock from `receipt_counter`. Both numbers are stored, so a devotee holding a draft receipt can be found.

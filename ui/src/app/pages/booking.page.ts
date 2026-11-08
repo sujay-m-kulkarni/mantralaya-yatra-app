@@ -8,7 +8,6 @@ import { positionOf, reversedIds } from '../core/ledger';
 import { LedgerService } from '../core/ledger.service';
 import { PAYMENT_MODES, PaymentMode, WARNING_TEXT } from '../core/models';
 import { paiseToInput, parseRupees } from '../core/money';
-import { receiptText, shareReceipt } from '../core/receipt';
 
 /** One booking: its receipt, payments, what is due, sharing the receipt, and the accountant's reversals. */
 @Component({
@@ -67,11 +66,6 @@ import { receiptText, shareReceipt } from '../core/receipt';
           @if (v.reversal; as r) {
             <div class="banner bad">Reversed: {{ r.reason }}{{ r.state === 'pending' ? ' (not sent yet)' : '' }}</div>
           }
-
-          <button class="btn" type="button" (click)="share()">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
-            Send receipt on WhatsApp
-          </button>
 
           <section>
             <h2 class="section-label">Payments</h2>
@@ -217,15 +211,6 @@ export class BookingPage {
   /** Only the accountant reverses, and only entries the server has accepted. */
   canReverse(state: string): boolean {
     return this.ledger.isAccounts() && state === 'synced';
-  }
-
-  async share(): Promise<void> {
-    const v = this.view();
-    if (!v) return;
-    const active = v.payments.filter((p) => !p.reversed && p.payment.state !== 'rejected').map((p) => p.payment);
-    await shareReceipt(receiptText(this.ledger.yatra()!.name, v.sevaName, v.booking, active, v.position.pendingPaise), v.booking.devoteePhone).catch(
-      () => undefined,
-    );
   }
 
   async pay(duePaise: number): Promise<void> {

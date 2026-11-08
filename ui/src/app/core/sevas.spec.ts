@@ -1,6 +1,6 @@
 import { SevaType } from './models';
 import { GOTRAS, NAKSHATRAS, RASHIS } from './sankalpa-lists';
-import { sevaProblem, suggestCode } from './sevas';
+import { mostUsedSevas, sevaProblem, suggestCode } from './sevas';
 
 const seva = (code: string): SevaType => ({ id: code, code, name: code, ratePaise: 100100, dailyLimit: null, requiresSankalpa: true, isActive: true, sortOrder: 1 });
 
@@ -22,6 +22,17 @@ describe('Seva rules', () => {
     expect(sevaProblem(ok, [seva('AST')], false)).toBeNull();
     expect(sevaProblem({ ...ok, ratePaise: null }, [], true)).toContain('price');
     expect(sevaProblem({ ...ok, dailyLimit: 0 }, [], true)).toContain('daily limit');
+  });
+});
+
+describe('Most used sevas', () => {
+  it('picks the four booked most often, then by the accountant\'s order, skipping sevas without a price or hidden', () => {
+    const types = ['AA', 'BB', 'CC', 'DD', 'EE', 'FF'].map((c, i) => ({ ...seva(c), sortOrder: i + 1 }));
+    types[4] = { ...types[4], ratePaise: null };
+    types[5] = { ...types[5], isActive: false };
+    const bookings = [{ sevaCode: 'DD' }, { sevaCode: 'DD' }, { sevaCode: 'CC' }, { sevaCode: 'EE' }, { sevaCode: 'FF' }];
+    expect(mostUsedSevas(types, bookings).map((t) => t.code)).toEqual(['DD', 'CC', 'AA', 'BB']);
+    expect(mostUsedSevas(types, []).map((t) => t.code)).toEqual(['AA', 'BB', 'CC', 'DD']);
   });
 });
 

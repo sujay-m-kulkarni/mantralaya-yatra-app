@@ -23,7 +23,7 @@ const config: CapacitorConfig = {
   appName: 'Mantralaya Yatra',
   webDir: 'dist/ui/browser',
   // Shown behind the web view while it loads, so there is no flash.
-  backgroundColor: '#FBFAF7',
+  backgroundColor: '#F4F7FA',
   android: {
     // The app's pages are https://localhost; calling an http laptop API from them is "mixed content".
     allowMixedContent: developerBuild,

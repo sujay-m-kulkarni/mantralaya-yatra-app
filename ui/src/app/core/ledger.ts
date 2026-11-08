@@ -188,7 +188,7 @@ export function priestList(ledger: Ledger, day: string): PriestListSeva[] {
     .filter((g) => g.entries.length > 0);
 }
 
-/** Plain text for WhatsApp or a printer. */
+/** Plain text to share or print. */
 export function priestListText(yatraName: string, dayLabel: string, groups: PriestListSeva[]): string {
   const lines = [`${yatraName}`, `Seva list — ${dayLabel}`, ''];
   for (const g of groups) {

@@ -9,9 +9,9 @@ The volunteers' phone app for the Seva Register. Same stack and versions as Mone
 | Opening darshan | Each time the app opens or is unlocked: the Brindavana at Mantralaya zooms out of a blur into focus with ॐ श्री राघवेन्द्राय नमः, then fades to the app (about 4 seconds; tap to skip; still photo when the phone's *Remove animations* is on) |
 | Set up | Server address, your name and email; choose a yatra or start one (you become its accountant) |
 | Seva Register | Day switcher, money collected that day (cash, UPI/bank, pending), seva filter, slots used against daily limits, every booking. Pull down to sync |
-| Book a seva | Seva (full ones greyed out), seva date, devotee and mobile, sankalpa (gotra, nakshatra and rashi from lists; "Other" for an unlisted gotra), the seva's fixed price, paid now by cash/UPI/bank or not paid. Save only; send the WhatsApp receipt from the booking screen |
+| Book a seva | Four small tiles for the most booked sevas, and a list to choose any seva (full ones greyed out), seva date, devotee and mobile, sankalpa (gotra, nakshatra and rashi from lists; "Other" for an unlisted gotra), the seva's fixed price, paid now by cash/UPI/bank or not paid. "Save" shows a green "Seva saved" note and returns to the seva list for that day; nothing is sent |
 | Sevas | The accountant creates each seva with its name, short code (the receipt prefix), price, daily limit and whether it needs sankalpa; changes a price (new bookings only) or hides a seva. Needs network |
-| Booking | Receipt (provisional until synced, then the final number), payments, record a later payment, re-send the receipt; the accountant can reverse a booking or a payment |
+| Booking | Receipt (provisional until synced, then the final number), payments, record a later payment; the accountant can reverse a booking or a payment |
 | Priest list | The day's sevas by type with sankalpa details; share or print |
 
 ## Offline first
@@ -27,7 +27,7 @@ src/app/
     ledger.service.ts  the active yatra's books, recording, the sync loop
     api.ts             API client
     store/             LocalStore: SqliteStore (Android), BrowserStore (browser, tests)
-    receipt.ts         WhatsApp receipt text and sharing
+    share.ts           the phone's share sheet (priest list)
   pages/               the five screens
 android/app/src/main/java/app/mantralayayatra/db/   the SQLite bridge (from Money Trail)
 ```

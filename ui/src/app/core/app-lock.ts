@@ -9,7 +9,7 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 
-/** Back in the app within this long: no need to unlock again (switching to WhatsApp to send a receipt). */
+/** Back in the app within this long: no need to unlock again (a quick switch to another app). */
 export const RELOCK_AFTER_MS = 2 * 60_000;
 
 /** The parts of the biometric plugin the lock uses; replaced in tests. */

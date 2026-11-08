@@ -22,7 +22,7 @@ A build pointed at an https server refuses plain-http traffic and mixed content;
 The app has one user, you. Two things protect the books:
 
 - **The API key** lets the Azure server trust your app. It is a long random value built into the APK when it is made; you never type it. `infra\azure-setup.ps1` creates it and writes it to `ui\app.secrets.json`, which is git-ignored. Laptop builds read it from there; GitHub release builds read the `API_KEY` secret. A build without it warns *no API key for an https server* and the app gets "did not accept this app's key". Because the key is inside the APK, **don't share your APK file** with anyone.
-- **The fingerprint lock** keeps the books from anyone holding your phone. The app asks for your fingerprint, face or phone PIN when it opens, and again after 2 minutes in the background (a quick switch to WhatsApp to send a receipt does not lock it). The fingerprint is checked by Android and never leaves the phone. If the phone has no screen lock at all, the app cannot lock; *This build* on the Set up screen says so.
+- **The fingerprint lock** keeps the books from anyone holding your phone. The app asks for your fingerprint, face or phone PIN when it opens, and again after 2 minutes in the background (a quick switch to another app does not lock it). The fingerprint is checked by Android and never leaves the phone. If the phone has no screen lock at all, the app cannot lock; *This build* on the Set up screen says so.
 
 ## One-time laptop setup
 
@@ -104,11 +104,11 @@ On the app's **Set up** screen, open **This build**: version, commit, build time
 
 ## App icon and splash screen
 
-The sources are in `ui/assets` (a diya on saffron). After changing them:
+The sources are in `ui/assets`: a pair of padukas in gold on Tungabhadra blue, also drawn in `ui/public/icon.svg` and on the lock screen. After changing them:
 
 ```powershell
-npx @capacitor/assets@3 generate --android --assetPath assets --iconBackgroundColor "#B45309" --splashBackgroundColor "#FBFAF7" --splashBackgroundColorDark "#1C1917"
+npx @capacitor/assets@3 generate --android --assetPath assets --iconBackgroundColor "#1E5A8A" --splashBackgroundColor "#F4F7FA" --splashBackgroundColorDark "#0F2236"
 git checkout -- android/app/src/main/res/mipmap-anydpi-v26
 ```
 
-The second line keeps the two adaptive-icon files as they are: the generator adds an inset that would shrink the diya.
+The second line keeps the two adaptive-icon files as they are: the generator adds an inset that would shrink the padukas.

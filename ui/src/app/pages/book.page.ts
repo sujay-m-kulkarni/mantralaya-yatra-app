@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { IonBackButton, IonButtons, IonContent, IonFooter, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
+import { RouterLink } from '@angular/router';
+import { IonBackButton, IonButtons, IonContent, IonFooter, IonHeader, IonTitle, IonToolbar, NavController } from '@ionic/angular';
 
 import { clampDay, dayNumber, formatDay, istDay } from '../core/dates';
 import { InrPipe } from '../core/inr.pipe';
@@ -10,6 +10,8 @@ import { LedgerService } from '../core/ledger.service';
 import { PAYMENT_MODES, PaymentMode, Sankalpa, SevaType } from '../core/models';
 import { paiseToInput, parseRupees } from '../core/money';
 import { GOTRAS, NAKSHATRAS, OTHER_GOTRA, RASHIS } from '../core/sankalpa-lists';
+import { mostUsedSevas } from '../core/sevas';
+import { ToastService } from '../core/toast';
 
 /** Book a seva for a devotee and record the money taken. Saved on the phone at once; sent when there is network. */
 @Component({
@@ -30,15 +32,30 @@ import { GOTRAS, NAKSHATRAS, OTHER_GOTRA, RASHIS } from '../core/sankalpa-lists'
       <form id="book" class="page-body" (ngSubmit)="save()">
         <fieldset>
           <legend class="section-label">1 · Seva</legend>
-          <div class="sevas">
-            @for (s of sevas(); track s.type.code) {
-              <button type="button" class="seva" [class.on]="s.type.code === sevaCode()" [disabled]="s.full || s.type.ratePaise === null" [attr.aria-pressed]="s.type.code === sevaCode()" (click)="pick(s.type)">
-                <span class="seva-name">{{ s.type.name }}</span>
-                <span class="num">{{ s.type.ratePaise === null ? 'No price yet' : (s.type.ratePaise | inr) }}</span>
-                <span class="note" [class.full]="s.full">{{ s.type.ratePaise === null ? 'Set its price on Sevas' : s.full ? 'Full · ' + s.count + ' of ' + s.type.dailyLimit : s.count + ' booked' }}</span>
-              </button>
-            }
-          </div>
+          @if (quick().length > 0) {
+            <div class="quick" aria-label="Most used sevas">
+              @for (s of quick(); track s.type.code) {
+                <button type="button" class="tile" [class.on]="s.type.code === sevaCode()" [disabled]="s.full" [attr.aria-pressed]="s.type.code === sevaCode()" (click)="pick(s.type)">
+                  <span class="tile-name">{{ s.type.name }}</span>
+                  <span class="tile-price num">{{ s.full ? 'Full' : (s.type.ratePaise! | inr) }}</span>
+                </button>
+              }
+            </div>
+          }
+          @if (sevas().length > 0) {
+            <div class="field">
+              <label for="seva">{{ quick().length > 0 ? 'Or choose any seva' : 'Seva' }}</label>
+              <select id="seva" name="seva" [ngModel]="sevaCode()" (ngModelChange)="pickCode($event)">
+                <option [ngValue]="null" disabled>Choose a seva</option>
+                @for (s of sevas(); track s.type.code) {
+                  <option [ngValue]="s.type.code" [disabled]="s.full || s.type.ratePaise === null">
+                    {{ s.type.name }} · {{ s.type.ratePaise === null ? 'no price yet' : s.full ? 'full' : (s.type.ratePaise | inr) }}
+                  </option>
+                }
+              </select>
+              @if (selectedInfo(); as info) { <span class="hint" [class.full]="info.full">{{ info.text }}</span> }
+            </div>
+          }
           @if (sevas().length === 0) {
             <div class="banner info">No sevas yet. @if (ledger.isAccounts()) { <a routerLink="/sevas">Create the sevas and their prices</a> first. } @else { The accountant creates them; sync with network to get them. }</div>
           }
@@ -55,7 +72,7 @@ import { GOTRAS, NAKSHATRAS, OTHER_GOTRA, RASHIS } from '../core/sankalpa-lists'
             <input id="devotee" name="devotee" [(ngModel)]="devoteeName" autocomplete="off" required />
           </div>
           <div class="field">
-            <label for="phone">Mobile (for a WhatsApp receipt later)</label>
+            <label for="phone">Mobile (optional)</label>
             <input id="phone" name="phone" type="tel" inputmode="tel" [(ngModel)]="devoteePhone" placeholder="98450 12345" />
           </div>
         </fieldset>
@@ -142,7 +159,7 @@ import { GOTRAS, NAKSHATRAS, OTHER_GOTRA, RASHIS } from '../core/sankalpa-lists'
         </div>
         <button class="btn" type="submit" form="book" [disabled]="saving()">
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-          {{ saving() ? 'Saving…' : 'Save seva' }}
+          {{ saving() ? 'Saving…' : 'Save' }}
         </button>
       </div>
     </ion-footer>
@@ -151,15 +168,15 @@ import { GOTRAS, NAKSHATRAS, OTHER_GOTRA, RASHIS } from '../core/sankalpa-lists'
     .sub { font-size: 12px; font-weight: 400; color: var(--my-muted); font-family: Inter, sans-serif; }
     fieldset { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
     legend { padding: 0; }
-    .sevas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .seva { min-height: 92px; padding: 12px; border-radius: 12px; text-align: left; display: flex; flex-direction: column; gap: 4px; font: inherit; background: #fff; border: 1px solid var(--my-border); color: var(--my-text); cursor: pointer; }
-    .seva.on { background: var(--my-accent-soft); border: 2px solid var(--my-accent); }
-    .seva:disabled { background: var(--my-soft); border-style: dashed; color: #78716c; cursor: not-allowed; }
-    .seva-name { font-size: 14px; font-weight: 700; }
-    .note { font-size: 11px; font-weight: 600; color: var(--my-muted); }
-    .note.full { color: var(--my-bad); }
+    .quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .tile { min-height: 58px; padding: 6px 6px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; text-align: center; font: inherit; background: #fff; border: 1px solid var(--my-border); color: var(--my-text); cursor: pointer; }
+    .tile.on { background: var(--my-accent-soft); border: 2px solid var(--my-accent); }
+    .tile:disabled { background: var(--my-soft); border-style: dashed; color: #64748b; cursor: not-allowed; }
+    .tile-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .tile-price { font-size: 11px; color: var(--my-muted); font-weight: 600; }
+    .hint.full { color: var(--my-bad); }
     .amount { font-size: 24px; font-weight: 700; padding: 8px 12px; border-radius: 10px; background: var(--my-soft); color: var(--my-text); }
-    .label { font-size: 13px; font-weight: 600; color: #44403c; }
+    .label { font-size: 13px; font-weight: 600; color: #334155; }
     .span-2 { grid-column: 1 / -1; }
     select { appearance: auto; }
     .segmented.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -171,7 +188,8 @@ import { GOTRAS, NAKSHATRAS, OTHER_GOTRA, RASHIS } from '../core/sankalpa-lists'
 })
 export class BookPage implements OnInit {
   readonly ledger = inject(LedgerService);
-  private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+  private readonly nav = inject(NavController);
 
   /** From the register's "Book seva" button: the day being viewed. */
   readonly date = input<string>();
@@ -210,6 +228,17 @@ export class BookPage implements OnInit {
         return { type, count, full: isFull(type, count) };
       }),
   );
+  /** Up to four quick tiles: the sevas booked most often in this yatra. */
+  readonly quick = computed(() => {
+    const byCode = new Map(this.sevas().map((s) => [s.type.code, s]));
+    return mostUsedSevas(this.ledger.ledger().sevaTypes, this.ledger.ledger().bookings).map((t) => byCode.get(t.code)!).filter(Boolean);
+  });
+  readonly selectedInfo = computed(() => {
+    const s = this.sevas().find((x) => x.type.code === this.sevaCode());
+    if (!s) return null;
+    const limit = s.type.dailyLimit === null ? 'no daily limit' : `${s.count} of ${s.type.dailyLimit} booked on this day`;
+    return { full: s.full, text: s.type.dailyLimit === null ? `${s.count} booked on this day · ${limit}` : limit };
+  });
   readonly selected = computed(() => this.ledger.ledger().sevaTypes.find((t) => t.code === this.sevaCode()) ?? null);
   readonly dayLabel = computed(() => (this.day() ? formatDay(this.day()) : ''));
   readonly dayNo = computed(() => (this.day() ? dayNumber(this.day(), this.yatra().startsOn, this.yatra().endsOn) : null));
@@ -219,7 +248,7 @@ export class BookPage implements OnInit {
   ngOnInit(): void {
     this.sevaDate = clampDay(this.date() ?? istDay(new Date()), this.yatra().startsOn, this.yatra().endsOn);
     this.day.set(this.sevaDate);
-    const first = this.sevas().find((s) => !s.full && s.type.ratePaise !== null);
+    const first = this.quick().find((s) => !s.full) ?? this.sevas().find((s) => !s.full && s.type.ratePaise !== null);
     if (first) this.pick(first.type);
   }
 
@@ -227,6 +256,11 @@ export class BookPage implements OnInit {
     if (type.ratePaise === null) return;
     this.sevaCode.set(type.code);
     this.paid = paiseToInput(type.ratePaise);
+  }
+
+  pickCode(code: string | null): void {
+    const type = this.sevas().find((s) => s.type.code === code)?.type;
+    if (type) this.pick(type);
   }
 
   modeLabel(m: PaymentMode): string {
@@ -268,8 +302,10 @@ export class BookPage implements OnInit {
         amountPaise,
         payment: mode && paidPaise ? { amountPaise: paidPaise, mode, reference: this.reference } : null,
       });
-      // Saved only. The receipt can be sent from the booking screen whenever it is wanted.
-      await this.router.navigate(['/booking', booking.id], { replaceUrl: true });
+      // Saved: a green note, then back to the seva list for that day.
+      this.toast.ok(`Seva saved · ${booking.devoteeName} · ${type.name}`);
+      this.ledger.focusDay.set(booking.sevaDate);
+      await this.nav.navigateBack('/register');
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : String(e));
     } finally {
