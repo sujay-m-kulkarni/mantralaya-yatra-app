@@ -1,14 +1,20 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * The server the build points at: MY_API_URL from the release pipeline (the Azure API, https), otherwise
- * a laptop running the API over plain http. Read when `npx cap sync` copies this config into the Android project.
+ * The server this build talks to: app.config.json (the Azure API), or MY_API_URL when working against the API
+ * on a laptop. Read when `npx cap sync` copies this config into the Android project.
  */
-const server = process.env['MY_API_URL'] || 'http://localhost:5180';
+const appConfig = JSON.parse(readFileSync(join(__dirname, 'app.config.json'), 'utf8').replace(/^\uFEFF/, '')) as {
+  apiUrl?: string;
+};
+const server = process.env['MY_API_URL'] || appConfig.apiUrl || 'http://localhost:5180';
 
 /**
- * Developer builds call a laptop over plain http, which Android blocks unless allowed. A build pointed at an
- * https server (every pipeline release) allows neither cleartext nor mixed content.
+ * Only a build pointed at an http laptop API allows plain-http traffic; an https server (Azure) allows neither
+ * cleartext nor mixed content.
  */
 const developerBuild = !server.startsWith('https://');
 
@@ -27,6 +33,11 @@ const config: CapacitorConfig = {
     // which does not depend on this origin.
     androidScheme: 'https',
     cleartext: developerBuild,
+  },
+  plugins: {
+    // Sign-in tokens are fetched with native HTTP: Entra refuses token requests from a web view's origin
+    // for mobile app registrations. Only calls made through CapacitorHttp go native; fetch is unchanged.
+    CapacitorHttp: { enabled: false },
   },
 };
 

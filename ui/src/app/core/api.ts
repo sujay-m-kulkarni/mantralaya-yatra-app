@@ -10,11 +10,13 @@ import {
 
 /**
  * How the phone signs in to the API.
- * token: a bearer token from Entra External ID (wired up in a later step).
- * dev: the X-Dev-User header, which the API accepts only when it runs in Development.
+ * getToken: an Entra External ID access token, fetched fresh for each call (refreshed when it runs out).
+ * token: a fixed bearer token (tests).
+ * devUser/devEmail: the X-Dev-User header, which the API accepts only when it runs in Development.
  */
 export interface Connection {
   baseUrl: string;
+  getToken?: (() => Promise<string | null>) | null;
   token?: string | null;
   devUser?: string | null;
   devEmail?: string | null;
@@ -76,7 +78,11 @@ export class ApiClient {
   private async call<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    if (this.connection.token) headers['Authorization'] = `Bearer ${this.connection.token}`;
+    if (this.connection.getToken) {
+      const token = await this.connection.getToken();
+      if (!token) throw new ApiError('You are signed out. Sign in again on the Set up screen.', 401);
+      headers['Authorization'] = `Bearer ${token}`;
+    } else if (this.connection.token) headers['Authorization'] = `Bearer ${this.connection.token}`;
     else if (this.connection.devUser) {
       headers['X-Dev-User'] = this.connection.devUser;
       if (this.connection.devEmail) headers['X-Dev-Email'] = this.connection.devEmail;
@@ -104,7 +110,7 @@ export class ApiClient {
     } catch {
       // Not a problem-details body; keep the status message.
     }
-    if (response.status === 401) message = 'Not signed in. Check the sign-in settings.';
+    if (response.status === 401) message = 'Not signed in. Sign in again on the Set up screen.';
     if (response.status === 404 && path.startsWith('/yatras/')) message = 'This yatra was not found, or you are not a member of it.';
     throw new ApiError(message, response.status, code);
   }

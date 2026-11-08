@@ -13,9 +13,15 @@ public sealed class AuthOptions
     [Required]
     public string Authority { get; set; } = "";
 
-    /// <summary>The API's application (client) id or app id URI.</summary>
+    /// <summary>
+    /// The API's application (client) id and/or its app id URI, separated by commas, e.g.
+    /// "6f1c…, api://6f1c…". A token is accepted if its audience is any of them.
+    /// </summary>
     [Required]
     public string Audience { get; set; } = "";
+
+    public string[] Audiences =>
+        Audience.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }
 
 /// <summary>Claim names as they appear in the token (inbound claim mapping is off).</summary>

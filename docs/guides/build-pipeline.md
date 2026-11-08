@@ -38,7 +38,7 @@ The same scheme as Money Trail.
 | Merge to `main` | All of the above, then a signed release build | A GitHub Release **Mantralaya Yatra X.Y.Z**, tagged `app-vX.Y.Z`, APK attached, marked Latest |
 | Tag `app-v1.0.0` pushed, or *Run workflow* with **release** ticked | The same as a merge | A pushed tag is used as it is; a manual run counts as a fix |
 
-The release build bakes in its version (shown on the Set up screen) and the repository variable `API_URL`, which the Set up screen offers as the server.
+The release build bakes in its version and `ui/app.config.json`: the Azure API's address and the sign-in settings. A repository variable `API_URL`, if set, overrides the address.
 
 **Version codes.** Android installs an update only if its version code is higher. Pipeline builds use 1,000,000 plus the run number; laptop builds use the plain version (0.1.0 is 100), always lower. Only the newest 10 fix releases are kept; major and minor releases stay.
 

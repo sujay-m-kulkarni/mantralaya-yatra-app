@@ -46,8 +46,11 @@ builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy =>
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<IOptions<AuthOptions>>((jwt, auth) =>
     {
+        // Entra External ID: https://<tenant-id>.ciamlogin.com/<tenant-id>/v2.0. The issuer to accept is read
+        // from that authority's metadata.
         jwt.Authority = auth.Value.Authority;
-        jwt.Audience = auth.Value.Audience;
+        // v2 access tokens carry the API's client id as their audience; its api:// URI is accepted too.
+        jwt.TokenValidationParameters.ValidAudiences = auth.Value.Audiences;
         jwt.MapInboundClaims = false;
     });
 builder.Services.AddAuthorization();

@@ -138,6 +138,14 @@ $scope = "/subscriptions/$sub/resourceGroups/$rg"
 $assigned = Invoke-AzCli role assignment list --assignee $appId --scope $scope --role Contributor --query '[0].id' -o tsv
 if (-not $assigned) { Invoke-AzCli role assignment create --assignee $appId --role Contributor --scope $scope --output none }
 
+Step 'Writing the API address into ui\app.config.json'
+$configPath = Join-Path $PSScriptRoot '..\ui\app.config.json'
+$config = Get-Content $configPath -Raw | ConvertFrom-Json
+$config.apiUrl = "https://$app.azurewebsites.net"
+# UTF-8 without a byte-order mark: Windows PowerShell 5's "-Encoding utf8" adds one, which JSON parsers reject.
+[IO.File]::WriteAllText((Resolve-Path $configPath).Path, ($config | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding $false))
+Write-Host "apiUrl  $($config.apiUrl)  (commit this file: every build of the app uses it)"
+
 Step 'Done. Now in GitHub:'
 Write-Host @"
 
@@ -153,8 +161,7 @@ Write-Host @"
        AZURE_WEBAPP_NAME      $app
    - Environment secret AZURE_SQL_CONNECTION_STRING: it is on your clipboard now (paste it, then copy something else).
 
-2. Settings > Secrets and variables > Actions > Variables > New repository variable:
-       API_URL                https://$app.azurewebsites.net
+2. Your API's address: https://$app.azurewebsites.net (already written into ui\app.config.json).
 
 "@
 $conn | Set-Clipboard

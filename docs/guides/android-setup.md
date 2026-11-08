@@ -6,14 +6,16 @@ How to build the phone app on your laptop, run it on a phone while developing, a
 
 | APK | How | Signed with | Talks to | Use it for |
 |---|---|---|---|---|
-| Run on a connected phone | `npm run android:run` | This laptop's debug key | API on this laptop (http) | Developing: build, install and open in one go |
-| Debug APK file | `npm run android:apk` | This laptop's debug key | API on this laptop (http) | Trying a build on a phone without a cable |
-| Release APK from GitHub | Merge a PR to `main` | The release key | Azure API (https only) | **The volunteers' phones.** Each release installs over the last |
-| Release APK from this laptop | `.\scripts\release-apk.ps1` | The release key | Azure API, or this laptop | Handing out a build when GitHub is not an option |
+| Run on a connected phone | `npm run android:run` | This laptop's debug key | Azure API, email sign-in | Developing: build, install and open in one go |
+| Debug APK file | `npm run android:apk` | This laptop's debug key | Azure API, email sign-in | Trying a build on a phone without a cable |
+| Release APK from GitHub | Merge a PR to `main` | The release key | Azure API, email sign-in | **The volunteers' phones.** Each release installs over the last |
+| Release APK from this laptop | `.\scripts\release-apk.ps1` | The release key | Azure API, email sign-in | Handing out a build when GitHub is not an option |
+
+Every build talks to the server in `ui\app.config.json` (the Azure API) and signs in with Entra External ID ([entra-setup.md](entra-setup.md)). To work against the API running on this laptop instead, set `$env:MY_API_URL = "http://<laptop address>:5180"` and `$env:MY_DEV_SIGNIN = "1"`; that build then asks for a server, name and email and uses the API's Development header.
 
 Android only updates an app with one signed by the **same key**. A debug-key build and a release build cannot replace each other; uninstall one to install the other. Data on the phone is lost on uninstall, so sync before uninstalling (the register's chip should say *Synced*).
 
-Developer builds allow plain-http calls, so they can reach `http://<laptop>:5180`. Any build pointed at an https server (every pipeline release) refuses plain http and mixed content.
+A build pointed at an https server refuses plain-http traffic and mixed content; only a build pointed at an http laptop address allows them.
 
 ## One-time laptop setup
 
@@ -37,9 +39,9 @@ The first Android build downloads Gradle and its dependencies and takes several 
 
 If Developer options will not cooperate, skip this: build `npm run android:apk` (or take a release from GitHub) and install the APK file instead, below.
 
-## Develop on a phone
+## Develop against the API on this laptop (optional)
 
-Start the API on the laptop so the phone can reach it over Wi-Fi (from `backend`):
+Normally the app talks to Azure. To try API changes before deploying them, start the API on the laptop so the phone can reach it over Wi-Fi (from `backend`):
 
 ```powershell
 dotnet run --project src/MantralayaYatra.Api --urls http://0.0.0.0:5180
@@ -47,13 +49,15 @@ dotnet run --project src/MantralayaYatra.Api --urls http://0.0.0.0:5180
 
 Windows asks once whether to allow it through the firewall: allow it on **private** networks. Find the laptop's address with `ipconfig` (the Wi-Fi adapter's IPv4 address, such as 192.168.1.20).
 
-Then, from `ui`:
+Then, from `ui`, build against it (`MY_DEV_SIGNIN` switches off Entra sign-in for this build, since the laptop API uses the Development header):
 
 ```powershell
+$env:MY_API_URL = "http://192.168.1.20:5180"
+$env:MY_DEV_SIGNIN = "1"
 npm run android:run
 ```
 
-It builds the web app, copies it into the Android project, builds, installs and opens the app on the phone; pick the phone when asked for a target. On the app's Set up screen enter `http://192.168.1.20:5180` (your address), your name and email.
+`npm run android:run` builds the web app, copies it into the Android project, builds, installs and opens the app on the phone; pick the phone when asked for a target. Close the PowerShell window afterwards so the next build points at Azure again.
 
 `npm run android:sync` then `npm run android:open` opens the project in Android Studio instead, where **Run** does the same and shows build errors more clearly.
 

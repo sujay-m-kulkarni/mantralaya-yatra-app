@@ -81,7 +81,7 @@ az webapp config appsettings set --resource-group $rg --name $app --settings `
   "Auth__Audience=api://mantralaya-yatra"
 ```
 
-The two `Auth__` values let the API start. Until Entra External ID sign-in is added to the app, the deployed API answers `401` to the app: the dev header that works on your laptop is switched off outside Development, on purpose. When the External ID tenant exists, replace both values with its issuer and the API's app id URI.
+The two `Auth__` values are placeholders that let the API start. Sign-in setup ([entra-setup.md](entra-setup.md)) replaces them with your External ID tenant's; until then the deployed API answers `401` to the app (the dev header that works on a laptop is off outside Development, on purpose).
 
 ## 4. Let GitHub deploy without a password (OIDC)
 
@@ -123,7 +123,7 @@ In the repository on GitHub: **Settings › Environments › New environment**, 
    ```
    The pipeline uses it only to run migrations; the web app has its own copy from step 3.
 
-Then, for the phone app: **Settings › Secrets and variables › Actions › Variables › New repository variable** `API_URL` = `https://<your web app>.azurewebsites.net`. Release APKs offer it as the server on the Set up screen.
+The phone app's server address lives in `ui/app.config.json` (`apiUrl`); the script writes it there. Commit that file so every build points at this web app.
 
 ## 6. First deploy
 
