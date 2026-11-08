@@ -7,7 +7,7 @@ import { ApiError } from '../core/api';
 import { formatDay } from '../core/dates';
 import { LedgerService } from '../core/ledger.service';
 import { YatraSummary } from '../core/models';
-import { APP_VERSION } from '../core/version';
+import { APP_VERSION, DEFAULT_SERVER } from '../core/version';
 
 /**
  * First run, or changing yatra: which server, who you are, and which yatra this phone keeps books for.
@@ -106,7 +106,7 @@ export class SetupPage implements OnInit {
   readonly ledger = inject(LedgerService);
   private readonly router = inject(Router);
 
-  server = 'http://localhost:5180';
+  server = DEFAULT_SERVER;
   name = '';
   email = '';
   newName = '';

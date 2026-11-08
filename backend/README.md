@@ -26,7 +26,7 @@ tests/
 
 ## Tests
 
-`dotnet test` runs everything. The integration tests need Docker running (Testcontainers starts SQL Server). CI runs the same on every pull request: `.github/workflows/backend.yml`.
+`dotnet test` runs everything. The integration tests need Docker running (Testcontainers starts SQL Server). CI runs the same on every pull request, and deploys to Azure after your approval on every merge: `.github/workflows/api.yml`, explained in [docs/guides/build-pipeline.md](../docs/guides/build-pipeline.md). Azure setup: [docs/guides/azure-setup.md](../docs/guides/azure-setup.md).
 
 ## First migration
 
@@ -37,4 +37,4 @@ dotnet tool restore
 dotnet ef migrations add InitialSevaRegister --project src/MantralayaYatra.Infrastructure --startup-project src/MantralayaYatra.Api --output-dir Persistence/Migrations
 ```
 
-From then on the API and tests apply migrations instead. Turn on the commented "Check the migrations match the model" step in `.github/workflows/backend.yml` in the same pull request.
+From then on the API and tests apply migrations instead, CI checks the migrations match the model, and the deploy pipeline can create the tables in Azure SQL. **The first deploy needs this migration**: the pipeline stops with that message until it exists.

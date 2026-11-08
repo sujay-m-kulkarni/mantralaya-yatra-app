@@ -41,6 +41,7 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 | Money | Integer paise on the phone, on the wire and on the server |
 | Seva rates | Not assumed. Seeded empty; the accountant enters the real rates and limits |
 | Testing | Unit, integration (SQL Server in Docker) and architecture tests, as in Money Trail |
+| CI/CD | Two pipelines. API: tests on PRs; on merge, deploy to Azure App Service + Azure SQL after the owner's approval, OIDC sign-in, migrations in the pipeline, tag `api-vX.Y.Z`. App: tests and debug APK on PRs; signed APK as a GitHub Release on merge, tag `app-vX.Y.Z`. Versions from PR labels, per part |
 | Git workflow | Feature branch `YYYY-MM-DD-<short-name>`, pull request to `main`, owner approves; each PR states the version it builds |
 
 ## Open decisions
@@ -56,5 +57,5 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 1. Generate the first EF migration on a laptop (see `backend/README.md`) and turn on the migration check in CI.
 2. ~~Ionic app: Seva Register and Book a seva screens, local SQLite, push and pull.~~ Built in `ui/`, with text receipts on WhatsApp.
 3. Entra External ID tenant and app registrations; sign-in in the app.
-4. Signed release APKs on GitHub Releases, as in Money Trail.
+4. ~~CI/CD pipelines~~ Built (`docs/guides/build-pipeline.md`). One-time setup left: Azure resources and the `production` environment (`docs/guides/azure-setup.md`), the APK signing key, the two release labels.
 5. Pilgrim register, then expenses and cash wallets.

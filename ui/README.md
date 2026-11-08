@@ -51,10 +51,9 @@ Use your laptop's Wi-Fi address as the server (e.g. `http://192.168.1.20:5180`),
 
 ## Tests
 
-`npm test` (watch) or `npm run test:ci` (once, headless). CI runs these, builds the web app and a debug APK on every pull request: `.github/workflows/ui.yml`. The APK is kept as the run's artifact.
+`npm test` (watch) or `npm run test:ci` (once, headless). CI runs these, builds the web app and a debug APK on every pull request, and publishes a signed release APK on every merge: `.github/workflows/app.yml`, explained in [docs/guides/build-pipeline.md](../docs/guides/build-pipeline.md).
 
 ## Not built yet
 
 - Entra External ID sign-in (the app sends the Development header today)
-- Signed release APKs on GitHub Releases, as in Money Trail
 - Pilgrim register (search a pilgrim instead of typing the name), expenses, cash wallets

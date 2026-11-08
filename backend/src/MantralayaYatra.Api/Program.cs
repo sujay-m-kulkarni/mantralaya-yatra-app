@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Threading.RateLimiting;
 using MantralayaYatra.Api.Auth;
 using MantralayaYatra.Api.Endpoints;
@@ -12,6 +13,10 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
 const string ContractVersion = "1";
+
+// The release version (Directory.Build.props, or the pipeline's -p:Version). The deploy pipeline checks
+// this header to confirm Azure is running the build it just shipped. ".NET" appends "+<commit>"; that is kept.
+var apiVersion = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 const string PerUserPolicy = "per-user";
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,11 +34,15 @@ var authentication = builder.Services
 if (devSignIn)
 {
     authentication.AddDevSignIn();
-    builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy =>
-        policy.WithOrigins("http://localhost:4200", "http://localhost:8100")
-            .AllowAnyHeader()
-            .AllowAnyMethod()));
 }
+
+// The phone app calls from inside its web view (origin http://localhost on Android), and in development
+// from "npm start" (4200) or "ionic serve" (8100). Origins are configuration so Azure can add more without a build.
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy =>
+    policy.WithOrigins(corsOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<IOptions<AuthOptions>>((jwt, auth) =>
     {
@@ -97,13 +106,10 @@ app.UseStatusCodePages();
 app.Use((context, next) =>
 {
     context.Response.Headers["X-Contract-Version"] = ContractVersion;
+    context.Response.Headers["X-Api-Version"] = apiVersion;
     return next(context);
 });
-if (devSignIn)
-{
-    // The app served by "npm start" (4200) or "ionic serve" (8100) calling this API from the browser.
-    app.UseCors();
-}
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
