@@ -187,13 +187,11 @@ jobs:
           CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
           TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          HAS_SQL: ${{ secrets.AZURE_SQL_CONNECTION_STRING != '' }}
         run: |
           missing=""
           for name in CLIENT_ID TENANT_ID SUBSCRIPTION_ID RESOURCE_GROUP SQL_SERVER WEBAPP; do
             [[ -z "${!name}" ]] && missing="$missing AZURE_$name"
           done
-          [[ "$HAS_SQL" != true ]] && missing="$missing AZURE_SQL_CONNECTION_STRING(secret)"
           if [[ -n "$missing" ]]; then
             echo "::error::The production environment is missing:$missing. See docs/guides/azure-setup.md."
             exit 1
@@ -218,12 +216,19 @@ jobs:
           az sql server firewall-rule create --resource-group "$RESOURCE_GROUP" --server "$SQL_SERVER" \
             --name "gh-run-${GITHUB_RUN_ID}" --start-ip-address "$ip" --end-ip-address "$ip" --output none
 
+      # The connection string is read from the web app itself (the one the running API uses), so there is
+      # no second copy in GitHub to fall out of step when the SQL password changes.
       - name: Migrate Azure SQL
-        env:
-          CONNECTION: ${{ secrets.AZURE_SQL_CONNECTION_STRING }}
         run: |
+          connection=$(az webapp config connection-string list --resource-group "$RESOURCE_GROUP" --name "$WEBAPP" \
+            --query "[?name=='Yatra'].value | [0]" -o tsv)
+          if [[ -z "$connection" ]]; then
+            echo "::error::The web app $WEBAPP has no connection string named Yatra. Run infra/azure-setup.ps1 again."
+            exit 1
+          fi
+          echo "::add-mask::$connection"
           chmod +x out/efbundle
-          out/efbundle --connection "$CONNECTION"
+          out/efbundle --connection "$connection"
 
       - name: Close the firewall again
         if: always() && env.RULE != ''

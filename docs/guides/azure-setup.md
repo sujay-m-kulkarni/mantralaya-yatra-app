@@ -9,7 +9,7 @@ az login
 .\infra\azure-setup.ps1 -Suffix sujay
 ```
 
-It confirms the subscription, asks for a SQL admin password, creates everything, prints the values for GitHub and puts the connection string on your clipboard. Then do step 5 (GitHub). It is safe to run again. If PowerShell refuses to run scripts, run `Set-ExecutionPolicy -Scope Process Bypass` first (this window only).
+It confirms the subscription, asks for a SQL admin password, creates everything, and prints the values for GitHub. Then do step 5 (GitHub). It is safe to run again. If PowerShell refuses to run scripts, run `Set-ExecutionPolicy -Scope Process Bypass` first (this window only).
 
 The steps below are what the script does, to run by hand or to understand it. Run them one at a time (Windows PowerShell does not accept `&&`).
 
@@ -105,6 +105,9 @@ az ad sp create --id $appId
 "@ | Set-Content -Encoding utf8 federated.json
 az ad app federated-credential create --id $appId --parameters federated.json
 Remove-Item federated.json
+# GitHub may instead name the repository with ids in the token. If the login step fails with
+# AADSTS700213, add a second credential named github-production-ids whose subject is exactly the
+# one in that error, such as repo:sujay-m-kulkarni@277398615/mantralaya-yatra-app@1449448518:environment:production
 # Contributor on this resource group only: deploy the web app and open/close SQL firewall rules.
 az role assignment create --assignee $appId --role Contributor --scope "/subscriptions/$sub/resourceGroups/$rg"
 ```
@@ -122,11 +125,7 @@ In the repository on GitHub: **Settings › Environments › New environment**, 
    "AZURE_CLIENT_ID=$appId"; "AZURE_TENANT_ID=$tenant"; "AZURE_SUBSCRIPTION_ID=$sub"
    "AZURE_RESOURCE_GROUP=$rg"; "AZURE_SQL_SERVER=$sql"; "AZURE_WEBAPP_NAME=$app"
    ```
-4. **Environment secret** `AZURE_SQL_CONNECTION_STRING`: the value of `$conn`. Copy it without showing it:
-   ```powershell
-   $conn | Set-Clipboard
-   ```
-   The pipeline uses it only to run migrations; the web app has its own copy from step 3.
+4. **No secrets.** The pipeline signs in to Azure with OIDC and reads the database connection string from the web app (the copy from step 3) when it migrates, so a changed SQL password only needs updating on the web app.
 
 The phone app's server address lives in `ui/app.config.json` (`apiUrl`); the script writes it there. Commit that file so every build points at this web app.
 

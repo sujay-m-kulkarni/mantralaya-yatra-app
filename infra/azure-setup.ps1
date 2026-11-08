@@ -19,7 +19,10 @@
 param(
   [Parameter(Mandatory = $true)][ValidatePattern('^[a-z0-9]{2,12}$')][string]$Suffix,
   [string]$Location = 'centralindia',
-  [string]$Repo = 'sujay-m-kulkarni/mantralaya-yatra-app'
+  [string]$Repo = 'sujay-m-kulkarni/mantralaya-yatra-app',
+  # GitHub may name the repository with its owner and repository ids (owner@id/repo@id) in the sign-in
+  # token instead of plain names. Azure must match it exactly, so both forms are trusted.
+  [string]$RepoWithIds = 'sujay-m-kulkarni@277398615/mantralaya-yatra-app@1449448518'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -134,13 +137,16 @@ Step "GitHub's deploy identity $deployApp (OIDC, no password)"
 $appId = Invoke-AzCli ad app list --display-name $deployApp --query '[0].appId' -o tsv
 if (-not $appId) { $appId = Invoke-AzCli ad app create --display-name $deployApp --query appId -o tsv }
 if (-not (Test-AzResource ad sp show --id $appId)) { Invoke-AzCli ad sp create --id $appId --output none }
-$subject = "repo:${Repo}:environment:production"
-$existing = Invoke-AzCli ad app federated-credential list --id $appId --query "[?subject=='$subject'].name" -o tsv
-if (-not $existing) {
+$trusts = @{ 'github-production' = $Repo; 'github-production-ids' = $RepoWithIds }
+foreach ($name in $trusts.Keys) {
+  if (-not $trusts[$name]) { continue }
+  $subject = "repo:$($trusts[$name]):environment:production"
+  $existing = Invoke-AzCli ad app federated-credential list --id $appId --query "[?subject=='$subject'].name" -o tsv
+  if ($existing) { continue }
   $fedFile = Join-Path $env:TEMP 'yatra-federated.json'
   @"
 {
-  "name": "github-production",
+  "name": "$name",
   "issuer": "https://token.actions.githubusercontent.com",
   "subject": "$subject",
   "audiences": ["api://AzureADTokenExchange"]
@@ -174,7 +180,7 @@ Write-Host @"
        AZURE_RESOURCE_GROUP   $rg
        AZURE_SQL_SERVER       $sql
        AZURE_WEBAPP_NAME      $app
-   - Environment secret AZURE_SQL_CONNECTION_STRING: it is on your clipboard now (paste it, then copy something else).
+   - No secret: the pipeline reads the database connection string from the web app.
 
    Repository secret for release APKs (Settings > Secrets and variables > Actions > New repository secret):
        API_KEY  = the "apiKey" value in ui\app.secrets.json
@@ -182,4 +188,3 @@ Write-Host @"
 2. Your API's address: https://$app.azurewebsites.net (already written into ui\app.config.json).
 
 "@
-$conn | Set-Clipboard
