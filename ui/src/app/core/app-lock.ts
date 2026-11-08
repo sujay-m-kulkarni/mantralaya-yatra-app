@@ -27,6 +27,8 @@ export class AppLockService {
 
   /** True while the lock screen is showing. */
   readonly locked = signal(false);
+  /** Counts each unlock (and the start, when there is no lock): the app plays the darshan on each. */
+  readonly opened = signal(0);
   /** What the This build panel shows. */
   readonly status = signal('Off in a browser');
   readonly error = signal<string | null>(null);
@@ -36,7 +38,14 @@ export class AppLockService {
 
   /** Locks at start-up on a phone, and watches the app going to the background and back. */
   async init(): Promise<void> {
-    if (!this.native) return;
+    // With no lock, the app is open straight away; with one, unlock() counts the opening.
+    const locks = await this.startLock().catch(() => false);
+    if (!locks) this.opened.update((n) => n + 1);
+  }
+
+  /** True when the lock is on (the phone has a fingerprint, face or screen lock). */
+  private async startLock(): Promise<boolean> {
+    if (!this.native) return false;
     let available = false;
     try {
       available = (await this.biometrics.isAvailable({ useFallback: true })).isAvailable;
@@ -46,13 +55,14 @@ export class AppLockService {
     if (!available) {
       // No fingerprint, face or screen lock set up on the phone: there is nothing to unlock with.
       this.status.set('Off: set a fingerprint or screen lock on the phone');
-      return;
+      return false;
     }
     this.status.set('Fingerprint, face or phone PIN');
     this.locked.set(true);
     await App.addListener('pause', () => this.wentToBackground());
     await App.addListener('resume', () => this.cameBack());
     void this.unlock();
+    return true;
   }
 
   wentToBackground(): void {
@@ -81,6 +91,7 @@ export class AppLockService {
         useFallback: true,
       });
       this.locked.set(false);
+      this.opened.update((n) => n + 1);
     } catch {
       this.error.set('Not unlocked. Tap Unlock to try again.');
     } finally {

@@ -82,6 +82,41 @@ describe('AppLockService', () => {
   });
 });
 
+describe('AppLockService and the opening darshan', () => {
+  let lock: AppLockService;
+  let bio: FakeBiometrics;
+
+  beforeEach(() => {
+    lock = TestBed.inject(AppLockService);
+    bio = new FakeBiometrics();
+    lock.biometrics = bio;
+    lock.native = true;
+  });
+
+  it('counts an opening only once the fingerprint unlocks the app', async () => {
+    bio.accept = false;
+    await lock.init();
+    await lock.unlock();
+    expect(lock.opened()).toBe(0);
+
+    bio.accept = true;
+    await lock.unlock();
+    expect(lock.opened()).toBe(1);
+  });
+
+  it('counts the start as an opening when there is no lock', async () => {
+    bio.available = false;
+    await lock.init();
+    expect(lock.opened()).toBe(1);
+  });
+
+  it('counts the start as an opening in a browser', async () => {
+    lock.native = false;
+    await lock.init();
+    expect(lock.opened()).toBe(1);
+  });
+});
+
 describe('ApiClient with the built-in key', () => {
   it('sends X-Api-Key and no dev header, and explains a refused key', async () => {
     let sent: Record<string, string> = {};

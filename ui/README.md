@@ -6,6 +6,7 @@ The volunteers' phone app for the Seva Register. Same stack and versions as Mone
 
 | Screen | |
 |---|---|
+| Opening darshan | Each time the app opens or is unlocked: the Brindavana at Mantralaya zooms out of a blur into focus with ॐ श्री राघवेन्द्राय नमः, then fades to the app (about 4 seconds; tap to skip; still photo when the phone's *Remove animations* is on) |
 | Set up | Server address, your name and email; choose a yatra or start one (you become its accountant) |
 | Seva Register | Day switcher, money collected that day (cash, UPI/bank, pending), seva filter, slots used against daily limits, every booking. Pull down to sync |
 | Book a seva | Seva (full ones greyed out), seva date, devotee and mobile, sankalpa, amount, paid now by cash/UPI/bank or not paid. Saves and opens the WhatsApp receipt |
