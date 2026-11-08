@@ -1,10 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
 import { IonApp, IonRouterOutlet } from '@ionic/angular';
 
 import { AppLockService } from './core/app-lock';
+import { Darshan } from './darshan';
 import { LedgerService } from './core/ledger.service';
 
 /** How often to sync while the app is open and online. */
@@ -12,10 +13,14 @@ const SYNC_EVERY_MS = 60_000;
 
 @Component({
   selector: 'app-root',
-  imports: [IonApp, IonRouterOutlet],
+  imports: [IonApp, IonRouterOutlet, Darshan],
   template: `
     <ion-app>
       <ion-router-outlet></ion-router-outlet>
+      @if (darshan()) {
+        <!-- Each time the app opens (or is unlocked again), before the books. -->
+        <app-darshan (done)="darshan.set(false)" />
+      }
       @if (lock.locked()) {
         <!-- Covers everything until the phone confirms the owner; the books stay hidden underneath. -->
         <div class="lock" role="dialog" aria-modal="true" aria-labelledby="lock-title">
@@ -42,8 +47,12 @@ const SYNC_EVERY_MS = 60_000;
 export class App {
   private readonly ledger = inject(LedgerService);
   readonly lock = inject(AppLockService);
+  readonly darshan = signal(false);
 
   constructor() {
+    effect(() => {
+      if (this.lock.opened() > 0) untracked(() => this.darshan.set(true));
+    });
     void this.lock.init();
     // Entries recorded offline go up as soon as there is a network, and other phones' entries come down.
     void this.ledger.init().then(() => this.ledger.sync());
