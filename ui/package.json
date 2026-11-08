@@ -1,0 +1,68 @@
+{
+  "name": "mantralaya-yatra-ui",
+  "version": "0.1.0",
+  "scripts": {
+    "ng": "ng",
+    "version:write": "node scripts/write-version.mjs",
+    "prestart": "npm run version:write",
+    "start": "ng serve",
+    "prebuild": "npm run version:write",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "pretest": "npm run version:write",
+    "test": "ng test",
+    "pretest:ci": "npm run version:write",
+    "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI",
+    "android:sync": "npm run build && cap sync android",
+    "android:run": "npm run build && cap sync android && cap run android",
+    "android:open": "cap open android"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^20.3.0",
+    "@angular/compiler": "^20.3.0",
+    "@angular/core": "^20.3.0",
+    "@angular/forms": "^20.3.0",
+    "@angular/platform-browser": "^20.3.0",
+    "@angular/router": "^20.3.0",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/network": "^8.0.0",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/status-bar": "^8.0.4",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
+    "@ionic/angular": "^9.0.7",
+    "ionicons": "^8.1.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.3.39",
+    "@angular/cli": "^20.3.39",
+    "@angular/compiler-cli": "^20.3.0",
+    "@capacitor/cli": "^8.5.3",
+    "@types/jasmine": "~5.1.0",
+    "jasmine-core": "~5.9.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "typescript": "~5.9.2"
+  }
+}

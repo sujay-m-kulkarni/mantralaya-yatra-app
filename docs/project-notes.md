@@ -1,6 +1,6 @@
 # Project notes
 
-Last updated 7 Nov 2026.
+Last updated 8 Nov 2026.
 
 ## Goal
 
@@ -27,7 +27,9 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 
 | Area | Decision |
 |---|---|
-| Stack | Same as Money Trail: Ionic + Angular + Capacitor, ASP.NET Core minimal APIs in four layers, SQL Server / Azure SQL |
+| Stack | Same as Money Trail: Ionic + Angular + Capacitor (in `ui/`), ASP.NET Core minimal APIs in four layers, SQL Server / Azure SQL |
+| Phone storage | Rows kept as JSON per collection in SQLite (Money Trail's native bridge); localStorage when run in a browser |
+| Receipts | Text receipt sent on WhatsApp straight to the devotee's number when given, otherwise via the share sheet |
 | Approach | Offline-first: phones record without network and sync later |
 | Repository | Its own repo, `mantralaya-yatra-app` (not inside Money Trail) |
 | Data ownership | Shared by a yatra's members, not owned by one user. Every row carries the yatra id |
@@ -52,7 +54,7 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 ## Next steps
 
 1. Generate the first EF migration on a laptop (see `backend/README.md`) and turn on the migration check in CI.
-2. Ionic app: Seva Register and Book a seva screens, local SQLite, push and pull.
-3. Receipt sharing on WhatsApp (image or PDF from the phone).
-4. Entra External ID tenant and app registrations.
+2. ~~Ionic app: Seva Register and Book a seva screens, local SQLite, push and pull.~~ Built in `ui/`, with text receipts on WhatsApp.
+3. Entra External ID tenant and app registrations; sign-in in the app.
+4. Signed release APKs on GitHub Releases, as in Money Trail.
 5. Pilgrim register, then expenses and cash wallets.

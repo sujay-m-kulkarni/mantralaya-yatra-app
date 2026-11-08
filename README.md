@@ -2,7 +2,7 @@
 
 Accounts for a group pilgrimage of about 200 people: seva bookings and contributions, travel, meals and groceries. Volunteers record money on their phones, offline if needed; the accountant sees one set of books.
 
-Status: the backend for the **Seva Register** (bookings, payments, reversals, daily register, priest's list, sync) is built ([`backend/`](backend/README.md)). The mobile app, expenses, meals and groceries are not built yet.
+Status: the **Seva Register** is built end to end: the backend ([`backend/`](backend/README.md)) and the offline-first phone app ([`ui/`](ui/README.md)). Expenses, meals, groceries and Entra sign-in are not built yet.
 
 ## Stack
 
@@ -10,7 +10,7 @@ Same as Money Trail, with the changes this app needs noted in [docs/architecture
 
 | Layer | Choice |
 |---|---|
-| Mobile UI | Ionic + Angular + Capacitor (not started) |
+| Mobile UI | Ionic + Angular + Capacitor (`ui/`) |
 | On-device store | SQLite, offline-first, synced |
 | API | ASP.NET Core (.NET 10 LTS), minimal APIs, Clean Architecture |
 | Cloud store | Azure SQL Database; SQL Server in Docker for development |
@@ -25,7 +25,7 @@ Everything is under [`docs/`](docs/README.md). Start with [project-notes.md](doc
 ```
 docs/      decisions, design, API contract, UI notes
 backend/   ASP.NET Core API, four layers, with unit, integration and architecture tests
-app/       Ionic + Angular app            (not started)
+ui/        Ionic + Angular + Capacitor app, with the Android project
 ```
 
 ## Workflow
