@@ -1,0 +1,4 @@
+{
+  "$comment": "Where the app connects. Not secret. Builds read it (scripts/write-version.mjs, capacitor.config.ts); MY_API_URL overrides apiUrl for working against the API on a laptop. The API key is NOT here: it comes from app.secrets.json (git-ignored, written by infra/azure-setup.ps1), MY_API_KEY, or the API_KEY GitHub secret.",
+  "apiUrl": "https://mantralaya-yatra-api-sujay.azurewebsites.net"
+}

@@ -2,13 +2,13 @@
 
 Base path `/api/v1`. JSON with camelCase names. Dates are `yyyy-MM-dd`; times are ISO 8601 with offset. Money is integer paise (`100100` = ₹1,001). Every response carries `X-Contract-Version: 1`.
 
-All endpoints need a bearer token from Entra External ID (in Development, the `X-Dev-User` header instead). Routes under `/yatras/{yatraId}` also need membership of that yatra; a non-member gets 404.
+All `/api/v1` endpoints need the app's key in the `X-Api-Key` header (the app has one user, the accountant; in Development the `X-Dev-User` header works instead). Routes under `/yatras/{yatraId}` also need membership of that yatra; a non-member gets 404. `/health/live` and `/health/ready` need no key.
 
 ## Endpoints
 
 | Method and path | Role | What it does |
 |---|---|---|
-| `GET /yatras` | any signed-in | Your yatras and your role in each. Claims invitations sent to your email |
+| `GET /yatras` | any signed-in | Your yatras and your role in each |
 | `POST /yatras` | any signed-in | Creates a yatra; you become its accountant; the four sevas are seeded without rates |
 | `GET /yatras/{id}/members` | Viewer | Members, roles, whether they have signed in |
 | `POST /yatras/{id}/members` | Accounts | Adds a member by email |
@@ -73,7 +73,7 @@ Response:
 | Code | When |
 |---|---|
 | 200 | Success. A push with some rejected entries is still 200; read each result |
-| 401 | No or invalid token |
+| 401 | No key, or the wrong key |
 | 403 | Your role does not allow it (`code: forbidden`) |
 | 404 | No such yatra, or you are not a member |
 | 409 | Conflict, e.g. a member with that email already exists |

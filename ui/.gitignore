@@ -44,3 +44,9 @@ Thumbs.db
 
 # Generated from package.json before each build
 /src/app/core/version.ts
+
+# APK files built on this laptop (scripts/android-apk.mjs)
+/apk
+
+# The API key for laptop builds (infra/azure-setup.ps1 writes it). Never commit it.
+/app.secrets.json

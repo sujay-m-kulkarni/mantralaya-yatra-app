@@ -2,7 +2,7 @@
 
 Accounts for a group pilgrimage of about 200 people: seva bookings and contributions, travel, meals and groceries. Volunteers record money on their phones, offline if needed; the accountant sees one set of books.
 
-Status: the **Seva Register** is built end to end: the backend ([`backend/`](backend/README.md)) and the offline-first phone app ([`ui/`](ui/README.md)). Expenses, meals, groceries and Entra sign-in are not built yet.
+Status: the **Seva Register** is built end to end: the backend ([`backend/`](backend/README.md)) and the offline-first phone app ([`ui/`](ui/README.md)). Expenses, meals and groceries are not built yet.
 
 ## Stack
 
@@ -14,7 +14,7 @@ Same as Money Trail, with the changes this app needs noted in [docs/architecture
 | On-device store | SQLite, offline-first, synced |
 | API | ASP.NET Core (.NET 10 LTS), minimal APIs, Clean Architecture |
 | Cloud store | Azure SQL Database; SQL Server in Docker for development |
-| Identity | Microsoft Entra External ID, email one-time passcode |
+| Access | One user: an API key built into the app, and the phone's fingerprint lock |
 
 ## Documentation
 

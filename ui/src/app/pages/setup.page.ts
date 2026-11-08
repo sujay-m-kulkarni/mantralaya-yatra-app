@@ -1,17 +1,20 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
 
 import { ApiError } from '../core/api';
+import { AppLockService } from '../core/app-lock';
 import { formatDay } from '../core/dates';
 import { LedgerService } from '../core/ledger.service';
 import { YatraSummary } from '../core/models';
-import { APP_VERSION } from '../core/version';
+import { API_KEY, APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/version';
 
 /**
- * First run, or changing yatra: which server, who you are, and which yatra this phone keeps books for.
- * Sign-in is by the API's Development header for now; Entra email sign-in replaces the name and email fields later.
+ * First run, or changing yatra: your name, and which yatra this phone keeps books for.
+ * Builds with the API key (every Azure build) talk to the build's server and need nothing else; the app itself is
+ * unlocked with your fingerprint (AppLockService). Developer builds against a laptop API ask for a server and email.
  */
 @Component({
   selector: 'app-setup',
@@ -24,25 +27,36 @@ import { APP_VERSION } from '../core/version';
     </ion-header>
     <ion-content>
       <div class="page-body">
-        <form class="card form" (ngSubmit)="connect()">
-          <h2>Server and you</h2>
-          <div class="field">
-            <label for="server">Server address</label>
-            <input id="server" name="server" type="url" inputmode="url" [(ngModel)]="server" required />
-            <span class="hint">On a phone, your laptop's Wi-Fi address, e.g. http://192.168.1.20:5180</span>
-          </div>
-          <div class="field">
-            <label for="name">Your name</label>
-            <input id="name" name="name" [(ngModel)]="name" autocomplete="name" required />
-            <span class="hint">Shown to the accountant and used in draft receipt numbers</span>
-          </div>
-          <div class="field">
-            <label for="email">Your email</label>
-            <input id="email" name="email" type="email" [(ngModel)]="email" autocomplete="email" required />
-            <span class="hint">The accountant adds you to a yatra with this email</span>
-          </div>
-          <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Connecting…' : 'Connect' }}</button>
-        </form>
+        @if (keyBuild) {
+          <form class="card form" (ngSubmit)="connectWithKey()">
+            <h2>Your name</h2>
+            <div class="field">
+              <label for="name">Name</label>
+              <input id="name" name="name" [(ngModel)]="name" autocomplete="name" required />
+              <span class="hint">Shown on receipts and used in draft receipt numbers</span>
+            </div>
+            <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Loading…' : 'Show my yatras' }}</button>
+          </form>
+        } @else {
+          <form class="card form" (ngSubmit)="connect()">
+            <h2>Server and you</h2>
+            <p class="muted">Developer build: no API key, so it uses the API's Development header (a laptop API only).</p>
+            <div class="field">
+              <label for="server">Server address</label>
+              <input id="server" name="server" type="url" inputmode="url" [(ngModel)]="server" required />
+              <span class="hint">On a phone, your laptop's Wi-Fi address, e.g. http://192.168.1.20:5180</span>
+            </div>
+            <div class="field">
+              <label for="name">Your name</label>
+              <input id="name" name="name" [(ngModel)]="name" autocomplete="name" required />
+            </div>
+            <div class="field">
+              <label for="email">Your email</label>
+              <input id="email" name="email" type="email" [(ngModel)]="email" autocomplete="email" required />
+            </div>
+            <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Connecting…' : 'Connect' }}</button>
+          </form>
+        }
 
         @if (error()) {
           <div class="banner bad" role="alert">{{ error() }}</div>
@@ -52,7 +66,7 @@ import { APP_VERSION } from '../core/version';
           <section>
             <h2 class="section-label">Your yatras</h2>
             @if (list.length === 0) {
-              <p class="muted">You are not in a yatra yet. Ask the accountant to add {{ email }}, or start one below.</p>
+              <p class="muted">No yatra yet. Start one below; you will be its accountant.</p>
             }
             <div class="list">
               @for (y of list; track y.id) {
@@ -86,7 +100,19 @@ import { APP_VERSION } from '../core/version';
           </form>
         }
 
-        <p class="muted version">Version {{ version }}</p>
+        <details class="card build">
+          <summary>This build</summary>
+          <dl>
+            <dt>Version</dt><dd>{{ build.version }}</dd>
+            <dt>Commit</dt><dd>{{ build.commit }}</dd>
+            <dt>Built</dt><dd>{{ build.builtAt }}</dd>
+            <dt>Server</dt><dd>{{ build.server }}</dd>
+            <dt>Server key</dt><dd>{{ build.key }}</dd>
+            <dt>App lock</dt><dd>{{ lock.status() }}</dd>
+            <dt>Running on</dt><dd>{{ build.platform }}</dd>
+            <dt>Phone storage</dt><dd>{{ build.storage }}</dd>
+          </dl>
+        </details>
       </div>
     </ion-content>
   `,
@@ -99,20 +125,38 @@ import { APP_VERSION } from '../core/version';
     .yatra[aria-current='true'] { border: 2px solid var(--my-accent); background: var(--my-accent-soft); }
     .yatra-name { font-weight: 700; font-size: 15px; }
     .yatra .pill { grid-row: 1 / span 2; grid-column: 2; align-self: center; text-transform: capitalize; }
-    .version { text-align: center; }
+    .signed-in { margin: 0; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .text-btn { background: none; border: none; color: var(--my-accent); font: inherit; font-weight: 600; min-height: 44px; padding: 0 4px; cursor: pointer; }
+    .build { padding: 12px 16px; font-size: 13px; }
+    .build summary { font-weight: 600; cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+    .build dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 8px 0 0; }
+    .build dt { color: var(--my-muted); }
+    .build dd { margin: 0; word-break: break-all; }
   `,
 })
 export class SetupPage implements OnInit {
   readonly ledger = inject(LedgerService);
+  readonly lock = inject(AppLockService);
+  /** Builds with the API key (every Azure build) need only a name; developer builds ask for a server. */
+  readonly keyBuild = !!API_KEY;
   private readonly router = inject(Router);
 
-  server = 'http://localhost:5180';
+  server = DEFAULT_SERVER;
   name = '';
   email = '';
   newName = '';
   startsOn = '';
   endsOn = '';
-  readonly version = APP_VERSION;
+  /** Which build is installed: handy when several APKs are going around the volunteers' phones. */
+  readonly build = {
+    version: APP_VERSION,
+    commit: APP_COMMIT,
+    builtAt: new Date(BUILT_AT).toLocaleString('en-IN'),
+    server: DEFAULT_SERVER,
+    platform: Capacitor.getPlatform(),
+    key: API_KEY ? 'Built in' : 'None (developer build)',
+    storage: Capacitor.getPlatform() === 'android' ? 'SQLite' : 'Browser (localStorage)',
+  };
 
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
@@ -125,8 +169,21 @@ export class SetupPage implements OnInit {
       this.server = s.baseUrl;
       this.name = s.displayName;
       this.email = s.devEmail ?? '';
-      await this.connect();
+      if (this.keyBuild) await this.connectWithKey();
+      else await this.connect();
     }
+  }
+
+  /** Builds with the API key: save the name, then list the yatras on the build's server. */
+  async connectWithKey(): Promise<void> {
+    if (!this.name.trim()) {
+      this.error.set('Enter your name.');
+      return;
+    }
+    await this.run(async () => {
+      await this.ledger.saveSettings({ baseUrl: DEFAULT_SERVER, displayName: this.name.trim() });
+      this.yatras.set(await this.ledger.api().listYatras());
+    });
   }
 
   day(d: string): string {
@@ -144,7 +201,6 @@ export class SetupPage implements OnInit {
         displayName: this.name.trim(),
         devUser: this.email.trim().toLowerCase(),
         devEmail: this.email.trim().toLowerCase(),
-        token: null,
       });
       this.yatras.set(await this.ledger.api().listYatras());
     });

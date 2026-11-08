@@ -15,7 +15,9 @@
     "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI",
     "android:sync": "npm run build && cap sync android",
     "android:run": "npm run build && cap sync android && cap run android",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "android:apk": "node scripts/android-apk.mjs",
+    "android:apk:release": "node scripts/android-apk.mjs --release"
   },
   "prettier": {
     "printWidth": 100,
@@ -43,6 +45,7 @@
     "@capacitor/network": "^8.0.0",
     "@capacitor/share": "^8.0.3",
     "@capacitor/status-bar": "^8.0.4",
+    "@capgo/capacitor-native-biometric": "^8.9.1",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/space-grotesk": "^5.3.0",
     "@ionic/angular": "^9.0.7",

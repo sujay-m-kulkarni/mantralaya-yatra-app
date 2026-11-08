@@ -1,25 +1,17 @@
-import { Injectable, InjectionToken, computed, inject, signal } from '@angular/core';
-import { Capacitor } from '@capacitor/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { ApiClient, ApiError, Connection, Fetch } from './api';
+import { ApiClient, ApiError, Connection } from './api';
 import { nowIst } from './dates';
 import { newId } from './ids';
 import { Ledger, dueOn } from './ledger';
 import { Booking, Payment, PaymentMode, Reversal, Sankalpa, YatraSummary } from './models';
-import { BrowserStore } from './store/browser-store';
-import { DocWrite, LocalStore, YatraData, emptyData } from './store/local-store';
-import { SqliteStore } from './store/sqlite-store';
+import { DocWrite, YatraData, emptyData } from './store/local-store';
 import { applyPulledChanges, applyPushResults, buildPushes, draftReceiptNo, pendingCount, withWrites } from './sync';
 
-export const LOCAL_STORE = new InjectionToken<LocalStore>('LocalStore', {
-  providedIn: 'root',
-  factory: () => (Capacitor.getPlatform() === 'android' ? new SqliteStore() : new BrowserStore()),
-});
+import { FETCH, LOCAL_STORE } from './tokens';
+import { API_KEY, DEFAULT_SERVER } from './version';
 
-export const FETCH = new InjectionToken<Fetch>('Fetch', {
-  providedIn: 'root',
-  factory: () => (input, init) => fetch(input, init),
-});
+export { FETCH, LOCAL_STORE } from './tokens';
 
 /** Who is using this phone, and which server it talks to. */
 export interface Settings extends Connection {
@@ -90,8 +82,10 @@ export class LedgerService {
 
   api(): ApiClient {
     const settings = this.settings();
-    if (!settings) throw new ApiError('Set up the server and your name first.', 0);
-    return new ApiClient(settings, this.fetchFn);
+    if (!settings) throw new ApiError('Set up your name first.', 0);
+    // Builds with the API key always talk to their own server (Azure); developer builds use what was entered.
+    const connection: Connection = API_KEY ? { baseUrl: DEFAULT_SERVER, apiKey: API_KEY } : settings;
+    return new ApiClient(connection, this.fetchFn);
   }
 
   async saveSettings(settings: Settings): Promise<void> {
@@ -253,7 +247,11 @@ export class LedgerService {
       await this.store.setMeta(META.deviceId, this.deviceId);
     }
     const settings = await this.store.getMeta(META.settings);
-    if (settings) this.settings.set(JSON.parse(settings) as Settings);
+    if (settings) {
+      const saved = JSON.parse(settings) as Settings;
+      // A build with the API key always talks to its own server (Azure), whatever an older build saved.
+      this.settings.set(API_KEY ? { ...saved, baseUrl: DEFAULT_SERVER } : saved);
+    }
     const yatra = await this.store.getMeta(META.yatra);
     if (yatra) await this.selectYatra(JSON.parse(yatra) as YatraSummary);
   }

@@ -36,11 +36,14 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 | Money entries | Append-only. Never edited or deleted; a mistake is cancelled with a reversal, recorded by the accountant only |
 | Receipt numbers | The phone prints a draft number offline; the server issues the final number (SRV-0001, …) when the booking syncs. Gap-free per seva per yatra |
 | Daily limits | A booking over a seva's daily limit is accepted and flagged for review, not refused, so collected cash always has a record |
-| Roles | Accounts (the accountant), Volunteer (books and takes payments), Viewer (committee, read only) |
-| Identity | Microsoft Entra External ID, email one-time passcode. The accountant adds members by email; access starts when they first sign in with it |
+| Roles | In the model for later (Accounts, Volunteer, Viewer); today the one user is Accounts |
+| Users | One person, the accountant, uses the app. No volunteers sign in (changed 8 Nov 2026) |
+| Server access | A long random API key built into the app and sent with every call; stored in the web app setting and the build's secrets, never in the repository. No Azure user directory, no email (Entra External ID was tried and dropped) |
+| App lock | The phone's fingerprint, face or PIN unlocks the app at start and after 2 minutes away |
 | Money | Integer paise on the phone, on the wire and on the server |
 | Seva rates | Not assumed. Seeded empty; the accountant enters the real rates and limits |
 | Testing | Unit, integration (SQL Server in Docker) and architecture tests, as in Money Trail |
+| CI/CD | Two pipelines. API: tests on PRs; on merge, deploy to Azure App Service + Azure SQL after the owner's approval, OIDC sign-in, migrations in the pipeline, tag `api-vX.Y.Z`. App: tests and debug APK on PRs; signed APK as a GitHub Release on merge, tag `app-vX.Y.Z`. Versions from PR labels, per part |
 | Git workflow | Feature branch `YYYY-MM-DD-<short-name>`, pull request to `main`, owner approves; each PR states the version it builds |
 
 ## Open decisions
@@ -55,6 +58,6 @@ A mobile app for the accountant of a group pilgrimage to Mantralaya (about 200 p
 
 1. Generate the first EF migration on a laptop (see `backend/README.md`) and turn on the migration check in CI.
 2. ~~Ionic app: Seva Register and Book a seva screens, local SQLite, push and pull.~~ Built in `ui/`, with text receipts on WhatsApp.
-3. Entra External ID tenant and app registrations; sign-in in the app.
-4. Signed release APKs on GitHub Releases, as in Money Trail.
+3. ~~Sign-in~~ API key + fingerprint lock (no Entra).
+4. ~~CI/CD pipelines~~ Built (`docs/guides/build-pipeline.md`). One-time setup left: Azure resources and the `production` environment (`docs/guides/azure-setup.md`), the APK signing key, the two release labels.
 5. Pilgrim register, then expenses and cash wallets.

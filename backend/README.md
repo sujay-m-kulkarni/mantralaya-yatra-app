@@ -22,11 +22,11 @@ tests/
    docker run -d --name yatra-sql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=Your_strong_password1 -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
    ```
 2. Run the API (Development): `dotnet run --project src/MantralayaYatra.Api`. It listens on http://localhost:5180 and builds the database on start.
-3. Open `src/MantralayaYatra.Api/MantralayaYatra.Api.http` in VS Code or Visual Studio and send the requests in order. The `X-Dev-User` header signs you in without Entra (Development only).
+3. Open `src/MantralayaYatra.Api/MantralayaYatra.Api.http` in VS Code or Visual Studio and send the requests in order. The `X-Dev-User` header signs you in without the API key (Development only).
 
 ## Tests
 
-`dotnet test` runs everything. The integration tests need Docker running (Testcontainers starts SQL Server). CI runs the same on every pull request: `.github/workflows/backend.yml`.
+`dotnet test` runs everything. The integration tests need Docker running (Testcontainers starts SQL Server). CI runs the same on every pull request, and deploys to Azure after your approval on every merge: `.github/workflows/api.yml`, explained in [docs/guides/build-pipeline.md](../docs/guides/build-pipeline.md). Azure setup: [docs/guides/azure-setup.md](../docs/guides/azure-setup.md).
 
 ## First migration
 
@@ -37,4 +37,4 @@ dotnet tool restore
 dotnet ef migrations add InitialSevaRegister --project src/MantralayaYatra.Infrastructure --startup-project src/MantralayaYatra.Api --output-dir Persistence/Migrations
 ```
 
-From then on the API and tests apply migrations instead. Turn on the commented "Check the migrations match the model" step in `.github/workflows/backend.yml` in the same pull request.
+From then on the API and tests apply migrations instead, CI checks the migrations match the model, and the deploy pipeline can create the tables in Azure SQL. **The first deploy needs this migration**: the pipeline stops with that message until it exists.

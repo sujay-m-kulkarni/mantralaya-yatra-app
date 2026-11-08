@@ -1,0 +1,193 @@
+# Phone app pipeline, the same way Money Trail releases its app. See docs/guides/build-pipeline.md.
+#
+#   Pull request touching ui/     ->  browser tests, web build, Android debug build (APK kept 14 days)
+#   Merge to main touching ui/    ->  the same, then a signed release APK published as a GitHub Release
+#                                     "Mantralaya Yatra X.Y.Z", tagged app-vX.Y.Z, marked Latest
+#   Push a tag such as app-v1.0.0 ->  a release with exactly that version
+#   "Run workflow" with release   ->  a release (counted as a fix)
+#
+# The version comes from the merged PR's label ("release: major" / "release: minor", none = fix),
+# counted on from the latest app-v tag.
+name: App
+
+on:
+  pull_request:
+    paths: ['ui/**', '.github/workflows/app.yml', '.github/scripts/**']
+  push:
+    branches: [main]
+    paths: ['ui/**', '.github/workflows/app.yml', '.github/scripts/**']
+    tags: ['app-v*']
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Publish a signed APK as a GitHub Release
+        type: boolean
+        default: false
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Release version rules
+        working-directory: .
+        run: node --test .github/scripts/next-version.test.mjs
+
+      - name: Browser tests
+        run: npm run test:ci
+
+      - name: Build the web app and copy it into the Android project
+        run: npm run build && npx cap sync android
+
+      - name: Debug build
+        working-directory: ui/android
+        run: ./gradlew assembleDebug --stacktrace
+
+      # Signed with a throwaway key that changes every run: for checking it builds, not for your phone.
+      - name: Keep the debug APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: mantralaya-yatra-debug
+          path: ui/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  release:
+    name: Signed release
+    needs: build
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/app-v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: read
+    env:
+      # A release needs both the signing key and the API key the app sends to the Azure API.
+      HAS_KEYSTORE: ${{ secrets.MY_KEYSTORE_BASE64 != '' && secrets.API_KEY != '' }}
+    steps:
+      # On a merge to main, missing secrets only warn, so main does not turn red before they exist.
+      # A tag or a manual release fails, because then a release was clearly wanted.
+      - name: Stop if the signing key or API key has not been added
+        if: env.HAS_KEYSTORE != 'true'
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
+            echo "::warning::No release: the signing key secrets or API_KEY are missing. See docs/guides/build-pipeline.md."
+            exit 0
+          fi
+          echo "::error::The signing key secrets or API_KEY are missing. See docs/guides/build-pipeline.md."
+          exit 1
+
+      - uses: actions/checkout@v5
+        if: env.HAS_KEYSTORE == 'true'
+
+      - uses: actions/setup-node@v5
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: actions/setup-java@v5
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: env.HAS_KEYSTORE == 'true'
+
+      - name: Work out the version
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=""
+          if [[ "$GITHUB_REF" == refs/tags/app-v* ]]; then
+            version="${GITHUB_REF#refs/tags/app-v}"
+          else
+            labels=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '[.[0].labels[]?.name] | join(",")' || true)
+            tags=$(gh api "repos/$GITHUB_REPOSITORY/tags" --paginate --jq '.[].name')
+            fallback=$(node -p "require('./ui/package.json').version")
+            version=$(node .github/scripts/next-version.mjs --prefix app-v --fallback "$fallback" --labels "$labels" --tags "$tags")
+          fi
+          echo "MY_VERSION=$version" >> "$GITHUB_ENV"
+          echo "MY_LABELS=$labels" >> "$GITHUB_ENV"
+          echo "App version $version (labels: ${labels:-none})" >> "$GITHUB_STEP_SUMMARY"
+
+      # MY_VERSION (above) and the API key go into the app; the server address comes from ui/app.config.json.
+      - name: Build the web app and copy it into the Android project
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: ui
+        env:
+          MY_API_KEY: ${{ secrets.API_KEY }}
+          MY_API_URL: ${{ vars.API_URL }}
+        run: npm ci && npm run build && npx cap sync android
+
+      - name: Write the signing key to a temporary file
+        if: env.HAS_KEYSTORE == 'true'
+        run: echo "${{ secrets.MY_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/mantralaya-yatra.jks"
+
+      - name: Signed release build
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: ui/android
+        env:
+          MY_KEYSTORE_FILE: ${{ runner.temp }}/mantralaya-yatra.jks
+          MY_KEYSTORE_PASSWORD: ${{ secrets.MY_KEYSTORE_PASSWORD }}
+          MY_KEY_ALIAS: ${{ secrets.MY_KEY_ALIAS }}
+          MY_KEY_PASSWORD: ${{ secrets.MY_KEY_PASSWORD }}
+          MY_BUILD_NUMBER: ${{ github.run_number }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Remove the signing key file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/mantralaya-yatra.jks"
+
+      - name: Publish the release
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/app-v* ]]; then tag="${GITHUB_REF#refs/tags/}"; else tag="app-v${MY_VERSION}"; fi
+          apk="mantralaya-yatra-${MY_VERSION}.apk"
+          cp ui/android/app/build/outputs/apk/release/app-release.apk "$apk"
+          gh release create "$tag" "$apk" --target "$GITHUB_SHA" --title "Mantralaya Yatra ${MY_VERSION}" --latest \
+            --notes "App version ${MY_VERSION} (build ${GITHUB_RUN_NUMBER}, commit ${GITHUB_SHA::7}, labels: ${MY_LABELS:-none}). Install over the existing app; do not uninstall first."
+
+      # Every merge makes a release, so keep only the newest 10 fix releases (such as app-v1.4.3).
+      # Major and minor releases (app-v2.0.0, app-v1.5.0) are always kept.
+      - name: Remove old fix releases
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 200 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | test("^app-v[0-9]+\\.[0-9]+\\.[1-9][0-9]*$"))] | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' |
+          while read -r old; do gh release delete "$old" --yes --cleanup-tag; done

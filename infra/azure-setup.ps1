@@ -1,0 +1,185 @@
+<#
+.SYNOPSIS
+  Creates the Mantralaya Yatra API's own Azure resources and lets GitHub deploy to them.
+
+.DESCRIPTION
+  Everything goes into its own resource group, with its own App Service plan; nothing is shared with
+  other apps. GitHub's deploy identity can touch this resource group only.
+  Safe to run again: anything that already exists is left as it is.
+  Also makes the API key the phone app sends (stored in the web app, and in ui\app.secrets.json for laptop builds).
+  Explained step by step in docs/guides/azure-setup.md.
+
+  Run from the repository folder in PowerShell:
+    az login
+    .\infra\azure-setup.ps1 -Suffix sujay
+
+.PARAMETER Suffix
+  Added to the SQL server and web app names, which must be unique across all of Azure.
+#>
+param(
+  [Parameter(Mandatory = $true)][ValidatePattern('^[a-z0-9]{2,12}$')][string]$Suffix,
+  [string]$Location = 'centralindia',
+  [string]$Repo = 'sujay-m-kulkarni/mantralaya-yatra-app'
+)
+
+$ErrorActionPreference = 'Stop'
+
+$rg = 'rg-mantralaya-yatra'
+$plan = 'asp-mantralaya-yatra'
+$sql = "sql-mantralaya-yatra-$Suffix"
+$db = 'mantralaya-yatra'
+$app = "mantralaya-yatra-api-$Suffix"
+$deployApp = 'github-mantralaya-yatra-deploy'
+$sqlUser = 'yatraadmin'
+
+function Step($text) { Write-Host "`n== $text" -ForegroundColor Cyan }
+
+# The Azure CLI program itself. Function names below must not be "az": PowerShell names ignore case,
+# so a function called Az would call itself instead of the CLI.
+$azCli = (Get-Command az -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if (-not $azCli) { throw 'The Azure CLI (az) is not installed: https://learn.microsoft.com/cli/azure/install-azure-cli-windows' }
+
+# Runs an az command and stops the script if it fails. az prints warnings on stderr, which Windows
+# PowerShell 5 would treat as fatal under 'Stop', so the exit code decides instead.
+function Invoke-AzCli {
+  $ErrorActionPreference = 'Continue'
+  $out = & $azCli @args
+  if ($LASTEXITCODE -ne 0) { throw "az $($args -join ' ') failed." }
+  return $out
+}
+
+# True if an az "show" finds the resource.
+function Test-AzResource {
+  $ErrorActionPreference = 'Continue'
+  & $azCli @args --only-show-errors 2>$null | Out-Null
+  return $LASTEXITCODE -eq 0
+}
+
+Step 'Azure account'
+$sub = Invoke-AzCli account show --query id -o tsv
+$tenant = Invoke-AzCli account show --query tenantId -o tsv
+$subName = Invoke-AzCli account show --query name -o tsv
+Write-Host "Subscription: $subName ($sub)"
+$answer = Read-Host "Create the resources in this subscription? (y/n)"
+if ($answer -ne 'y') { Write-Host 'Stopped. Choose another with: az account set --subscription <name>'; exit 1 }
+
+Step "Checking the .NET 10 runtime name"
+# The list may say "DOTNETCORE|10.0" or "DOTNETCORE:10.0"; az webapp create accepts either separator.
+# The colon form is always passed, because on Windows az is a .cmd file and cmd.exe would treat "|" as a pipe.
+$runtimes = (Invoke-AzCli webapp list-runtimes --os-type linux -o tsv) -join "`n"
+$found = [regex]::Match($runtimes, '(?i)\bDOTNETCORE[:|]10\.0\b')
+if (-not $found.Success) {
+  throw "App Service does not list .NET 10. Available: $(($runtimes -split "`n" | Select-String DOTNET) -join ', ')"
+}
+$runtime = 'DOTNETCORE:10.0'
+Write-Host "Found $($found.Value); creating the web app with $runtime"
+
+Step "Resource group $rg"
+Invoke-AzCli group create --name $rg --location $Location --output none
+
+Step "SQL server $sql and database $db"
+if (Test-AzResource sql server show --resource-group $rg --name $sql) {
+  Write-Host 'The SQL server exists; keeping it. Enter its existing admin password below.'
+}
+$secure = Read-Host "SQL admin password for '$sqlUser' (keep it in your password manager)" -AsSecureString
+$sqlPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+if ($sqlPassword -match '[;''"{}]') { throw "Choose a password without ; ' `" { or }: they break the connection string." }
+if (-not (Test-AzResource sql server show --resource-group $rg --name $sql)) {
+  Invoke-AzCli sql server create --resource-group $rg --name $sql --location $Location --admin-user $sqlUser --admin-password $sqlPassword --output none
+}
+if (-not (Test-AzResource sql db show --resource-group $rg --server $sql --name $db)) {
+  Invoke-AzCli sql db create --resource-group $rg --server $sql --name $db --service-objective Basic --output none
+}
+# Lets Azure services (the web app) reach the database. The pipeline opens its own rule per run.
+Invoke-AzCli sql server firewall-rule create --resource-group $rg --server $sql --name AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0 --output none
+$conn = "Server=tcp:$sql.database.windows.net,1433;Database=$db;User ID=$sqlUser;Password=$sqlPassword;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30"
+
+Step "App Service plan $plan (its own, Linux B1)"
+if (-not (Test-AzResource appservice plan show --resource-group $rg --name $plan)) {
+  Invoke-AzCli appservice plan create --resource-group $rg --name $plan --location $Location --is-linux --sku B1 --output none
+}
+
+Step "Web app $app"
+if (-not (Test-AzResource webapp show --resource-group $rg --name $app)) {
+  Invoke-AzCli webapp create --resource-group $rg --plan $plan --name $app --runtime $runtime --output none
+}
+Invoke-AzCli webapp config set --resource-group $rg --name $app --always-on true --output none
+$healthFile = Join-Path $env:TEMP 'yatra-healthcheck.json'
+'{"healthCheckPath": "/health/ready"}' | Set-Content -Encoding ascii $healthFile
+Invoke-AzCli webapp config set --resource-group $rg --name $app --generic-configurations "@$healthFile" --output none
+Remove-Item $healthFile
+Invoke-AzCli webapp update --resource-group $rg --name $app --https-only true --output none
+Invoke-AzCli webapp config connection-string set --resource-group $rg --name $app --connection-string-type SQLAzure --settings "Yatra=$conn" --output none
+Invoke-AzCli webapp config appsettings set --resource-group $rg --name $app --output none --settings "Database__MigrateOnStartup=false"
+
+Step 'API key (built into your app; lets the server trust it)'
+# One user, the accountant: the app sends this key with every call. Made once; kept on later runs.
+$existingKey = Invoke-AzCli webapp config appsettings list --resource-group $rg --name $app --query "[?name=='Access__ApiKey'].value | [0]" -o tsv
+if ($existingKey) {
+  $apiKey = $existingKey
+  Write-Host 'Keeping the existing key.'
+} else {
+  $bytes = New-Object byte[] 32
+  [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $apiKey = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+  Invoke-AzCli webapp config appsettings set --resource-group $rg --name $app --output none --settings "Access__ApiKey=$apiKey"
+  Write-Host 'Made a new key and gave it to the web app.'
+}
+# For builds on this laptop. Git-ignored (ui/.gitignore): never commit it.
+$secretsPath = Join-Path $PSScriptRoot '..\ui\app.secrets.json'
+[IO.File]::WriteAllText([IO.Path]::GetFullPath($secretsPath), "{ `"apiKey`": `"$apiKey`" }`n", (New-Object Text.UTF8Encoding $false))
+Write-Host "Wrote ui\app.secrets.json (git-ignored)."
+
+Step "GitHub's deploy identity $deployApp (OIDC, no password)"
+$appId = Invoke-AzCli ad app list --display-name $deployApp --query '[0].appId' -o tsv
+if (-not $appId) { $appId = Invoke-AzCli ad app create --display-name $deployApp --query appId -o tsv }
+if (-not (Test-AzResource ad sp show --id $appId)) { Invoke-AzCli ad sp create --id $appId --output none }
+$subject = "repo:${Repo}:environment:production"
+$existing = Invoke-AzCli ad app federated-credential list --id $appId --query "[?subject=='$subject'].name" -o tsv
+if (-not $existing) {
+  $fedFile = Join-Path $env:TEMP 'yatra-federated.json'
+  @"
+{
+  "name": "github-production",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "$subject",
+  "audiences": ["api://AzureADTokenExchange"]
+}
+"@ | Set-Content -Encoding ascii $fedFile
+  Invoke-AzCli ad app federated-credential create --id $appId --parameters "@$fedFile" --output none
+  Remove-Item $fedFile
+}
+$scope = "/subscriptions/$sub/resourceGroups/$rg"
+$assigned = Invoke-AzCli role assignment list --assignee $appId --scope $scope --role Contributor --query '[0].id' -o tsv
+if (-not $assigned) { Invoke-AzCli role assignment create --assignee $appId --role Contributor --scope $scope --output none }
+
+Step 'Writing the API address into ui\app.config.json'
+$configPath = Join-Path $PSScriptRoot '..\ui\app.config.json'
+$config = Get-Content $configPath -Raw | ConvertFrom-Json
+$config.apiUrl = "https://$app.azurewebsites.net"
+# UTF-8 without a byte-order mark: Windows PowerShell 5's "-Encoding utf8" adds one, which JSON parsers reject.
+[IO.File]::WriteAllText((Resolve-Path $configPath).Path, ($config | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding $false))
+Write-Host "apiUrl  $($config.apiUrl)  (commit this file: every build of the app uses it)"
+
+Step 'Done. Now in GitHub:'
+Write-Host @"
+
+1. Settings > Environments > New environment: production
+   - Required reviewers: tick, add yourself
+   - Deployment branches and tags: Selected > add main
+   - Environment variables:
+       AZURE_CLIENT_ID        $appId
+       AZURE_TENANT_ID        $tenant
+       AZURE_SUBSCRIPTION_ID  $sub
+       AZURE_RESOURCE_GROUP   $rg
+       AZURE_SQL_SERVER       $sql
+       AZURE_WEBAPP_NAME      $app
+   - Environment secret AZURE_SQL_CONNECTION_STRING: it is on your clipboard now (paste it, then copy something else).
+
+   Repository secret for release APKs (Settings > Secrets and variables > Actions > New repository secret):
+       API_KEY  = the "apiKey" value in ui\app.secrets.json
+
+2. Your API's address: https://$app.azurewebsites.net (already written into ui\app.config.json).
+
+"@
+$conn | Set-Clipboard

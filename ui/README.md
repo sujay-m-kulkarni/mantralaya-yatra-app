@@ -39,22 +39,21 @@ npm install
 npm start            # http://localhost:4200
 ```
 
-On the Set up screen leave the server as `http://localhost:5180` and enter any name and email. Sign-in uses the API's Development header for now.
+By default the app talks to the Azure API with the key from `app.secrets.json`. To use the API on this laptop instead: `$env:MY_API_URL = "http://localhost:5180"; $env:MY_DEV_SIGNIN = "1"; npm start`, then enter any name and email on the Set up screen.
 
-On a phone (Android Studio and a USB-connected phone):
+On a phone, or to make an APK file to install:
 
 ```
-npm run android:run
+npm run android:run      # build, install and open on a USB-connected phone
+npm run android:apk      # an APK file in ui/apk/, no phone needed
 ```
 
-Use your laptop's Wi-Fi address as the server (e.g. `http://192.168.1.20:5180`), and start the API with `--urls http://0.0.0.0:5180` so the phone can reach it.
+Phone and laptop setup, signed release APKs, installing from GitHub Releases and debugging: [docs/guides/android-setup.md](../docs/guides/android-setup.md).
 
 ## Tests
 
-`npm test` (watch) or `npm run test:ci` (once, headless). CI runs these, builds the web app and a debug APK on every pull request: `.github/workflows/ui.yml`. The APK is kept as the run's artifact.
+`npm test` (watch) or `npm run test:ci` (once, headless). CI runs these, builds the web app and a debug APK on every pull request, and publishes a signed release APK on every merge: `.github/workflows/app.yml`, explained in [docs/guides/build-pipeline.md](../docs/guides/build-pipeline.md).
 
 ## Not built yet
 
-- Entra External ID sign-in (the app sends the Development header today)
-- Signed release APKs on GitHub Releases, as in Money Trail
 - Pilgrim register (search a pilgrim instead of typing the name), expenses, cash wallets

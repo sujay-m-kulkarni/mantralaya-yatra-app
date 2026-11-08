@@ -1,0 +1,259 @@
+# API pipeline. See docs/guides/build-pipeline.md.
+#
+#   Pull request touching backend/  ->  build and test (SQL Server in Docker for the integration tests)
+#   Merge to main touching backend/ ->  build and test, package, then WAIT for approval on the
+#                                       "production" environment, then migrate Azure SQL, deploy to
+#                                       App Service, check /health/ready, and tag api-vX.Y.Z
+#   "Run workflow" on main          ->  the same as a merge (to redeploy)
+#
+# The version comes from the merged PR's label ("release: major" / "release: minor", none = fix),
+# counted on from the latest api-v tag, as Money Trail does for its app.
+name: API
+
+on:
+  pull_request:
+    paths: ['backend/**', '.github/workflows/api.yml', '.github/scripts/**']
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/api.yml', '.github/scripts/**']
+  workflow_dispatch:
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Release version rules
+        working-directory: .
+        run: node --test .github/scripts/next-version.test.mjs
+
+      - name: Restore
+        run: |
+          dotnet restore
+          dotnet tool restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Check the migrations match the model
+        run: |
+          if ls src/MantralayaYatra.Infrastructure/Persistence/Migrations/*.cs >/dev/null 2>&1; then
+            dotnet ef migrations has-pending-model-changes \
+              --project src/MantralayaYatra.Infrastructure \
+              --startup-project src/MantralayaYatra.Api \
+              --configuration Release --no-build
+          else
+            echo "::warning::No EF migrations yet. Generate the first one before the first deploy: see backend/README.md, 'First migration'."
+          fi
+
+      - name: Test
+        run: >
+          dotnet test --no-build --configuration Release
+          --logger "console;verbosity=normal"
+          --logger trx --results-directory TestResults
+
+      - name: Report failing tests
+        if: failure()
+        run: python3 ../.github/scripts/trx-annotations.py TestResults
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: api-test-results
+          path: backend/TestResults
+          retention-days: 14
+
+  package:
+    name: Package
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # From the merged PR's label, counted on from the latest api-v tag. The first release is the
+      # <Version> in Directory.Build.props.
+      - name: Work out the version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '[.[0].labels[]?.name] | join(",")' || true)
+          tags=$(gh api "repos/$GITHUB_REPOSITORY/tags" --paginate --jq '.[].name')
+          fallback=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          version=$(node ../.github/scripts/next-version.mjs --prefix api-v --fallback "$fallback" --labels "$labels" --tags "$tags")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "API version $version (labels: ${labels:-none})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop if there are no migrations
+        run: |
+          if ! ls src/MantralayaYatra.Infrastructure/Persistence/Migrations/*.cs >/dev/null 2>&1; then
+            echo "::error::Azure SQL is set up by migrations, and there are none yet. Generate the first one: backend/README.md, 'First migration'."
+            exit 1
+          fi
+
+      - name: Restore
+        run: |
+          dotnet restore
+          dotnet tool restore
+
+      - name: Publish the API
+        run: >
+          dotnet publish src/MantralayaYatra.Api
+          --configuration Release --no-restore
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:SourceRevisionId=${{ github.sha }}
+          --output ../out/api
+
+      # One self-contained program that brings Azure SQL up to date; it needs no .NET SDK to run.
+      - name: Build the migration bundle
+        run: >
+          dotnet ef migrations bundle
+          --project src/MantralayaYatra.Infrastructure
+          --startup-project src/MantralayaYatra.Api
+          --configuration Release --self-contained --target-runtime linux-x64
+          --output ../out/efbundle --force
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: api-package
+          path: out/
+          retention-days: 30
+
+  deploy:
+    name: Deploy to Azure
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Required reviewers on this environment make the run wait for your approval
+    # (Settings > Environments > production). Its variables and secrets are listed in docs/guides/azure-setup.md.
+    environment:
+      name: production
+      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/health/ready
+    concurrency:
+      group: api-production
+      cancel-in-progress: false
+    permissions:
+      contents: write # the api-v tag
+      id-token: write # signing in to Azure with OIDC
+    env:
+      VERSION: ${{ needs.package.outputs.version }}
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      SQL_SERVER: ${{ vars.AZURE_SQL_SERVER }}
+      WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+    steps:
+      - name: Stop if Azure is not set up yet
+        env:
+          CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          HAS_SQL: ${{ secrets.AZURE_SQL_CONNECTION_STRING != '' }}
+        run: |
+          missing=""
+          for name in CLIENT_ID TENANT_ID SUBSCRIPTION_ID RESOURCE_GROUP SQL_SERVER WEBAPP; do
+            [[ -z "${!name}" ]] && missing="$missing AZURE_$name"
+          done
+          [[ "$HAS_SQL" != true ]] && missing="$missing AZURE_SQL_CONNECTION_STRING(secret)"
+          if [[ -n "$missing" ]]; then
+            echo "::error::The production environment is missing:$missing. See docs/guides/azure-setup.md."
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: api-package
+          path: out
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Azure SQL only lets in addresses on its firewall. Open it for this runner, for this run only.
+      - name: Let this runner reach Azure SQL
+        run: |
+          ip=$(curl -fsS https://api.ipify.org)
+          echo "RULE=gh-run-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+          az sql server firewall-rule create --resource-group "$RESOURCE_GROUP" --server "$SQL_SERVER" \
+            --name "gh-run-${GITHUB_RUN_ID}" --start-ip-address "$ip" --end-ip-address "$ip" --output none
+
+      - name: Migrate Azure SQL
+        env:
+          CONNECTION: ${{ secrets.AZURE_SQL_CONNECTION_STRING }}
+        run: |
+          chmod +x out/efbundle
+          out/efbundle --connection "$CONNECTION"
+
+      - name: Close the firewall again
+        if: always() && env.RULE != ''
+        run: az sql server firewall-rule delete --resource-group "$RESOURCE_GROUP" --server "$SQL_SERVER" --name "$RULE" --output none
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          package: out/api
+
+      # Ready means the app started and reached the database; the header proves it is this build.
+      - name: Check the new version is live
+        run: |
+          url="https://${WEBAPP}.azurewebsites.net/health/ready"
+          for attempt in $(seq 1 30); do
+            headers=$(curl -s -D - -o /dev/null --max-time 20 "$url" || true)
+            status=$(echo "$headers" | awk 'NR==1 {print $2}')
+            live=$(echo "$headers" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-api-version" {print $2}')
+            echo "Attempt $attempt: status ${status:-none}, version ${live:-none}"
+            if [[ "$status" == 200 && "${live%%+*}" == "$VERSION" ]]; then
+              echo "API $VERSION is live: $url" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::API $VERSION did not come up healthy. Check Log stream on the App Service in the Azure portal."
+          exit 1
+
+      - name: Tag the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/api-v${VERSION}" -f sha="$GITHUB_SHA" --silent

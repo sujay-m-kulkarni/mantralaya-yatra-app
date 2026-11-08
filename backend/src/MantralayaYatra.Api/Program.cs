@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Threading.RateLimiting;
 using MantralayaYatra.Api.Auth;
 using MantralayaYatra.Api.Endpoints;
@@ -7,40 +8,42 @@ using MantralayaYatra.Application.LedgerSync;
 using MantralayaYatra.Application.Register;
 using MantralayaYatra.Application.Yatras;
 using MantralayaYatra.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Options;
 
 const string ContractVersion = "1";
+
+// The release version (Directory.Build.props, or the pipeline's -p:Version). The deploy pipeline checks
+// this header to confirm Azure is running the build it just shipped. ".NET" appends "+<commit>"; that is kept.
+var apiVersion = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 const string PerUserPolicy = "per-user";
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Identity: validate Entra External ID tokens; keep claim names as issued ("sub", not a mapped URI).
-builder.Services.AddOptions<AuthOptions>()
-    .BindConfiguration(AuthOptions.Section)
-    .ValidateDataAnnotations()
+// Identity: one user, the accountant, whose app sends the API key (see Auth/ApiKeySignIn.cs).
+// Outside Development the key must be set and long, or the API refuses to start.
+builder.Services.AddOptions<AccessOptions>()
+    .BindConfiguration(AccessOptions.Section)
+    .Validate(
+        access => builder.Environment.IsDevelopment() || access.ApiKey.Length >= AccessOptions.MinKeyLength,
+        $"Access:ApiKey must be at least {AccessOptions.MinKeyLength} characters (App Service setting Access__ApiKey).")
     .ValidateOnStart();
 // In Development only, the X-Dev-User header also signs a request in (see Auth/DevSignIn.cs).
 var devSignIn = builder.Environment.IsDevelopment();
 var authentication = builder.Services
-    .AddAuthentication(devSignIn ? DevSignIn.PolicyScheme : JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer();
+    .AddAuthentication(devSignIn ? DevSignIn.PolicyScheme : ApiKeySignIn.Scheme)
+    .AddApiKeySignIn();
 if (devSignIn)
 {
     authentication.AddDevSignIn();
-    builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy =>
-        policy.WithOrigins("http://localhost:4200", "http://localhost:8100")
-            .AllowAnyHeader()
-            .AllowAnyMethod()));
 }
-builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-    .Configure<IOptions<AuthOptions>>((jwt, auth) =>
-    {
-        jwt.Authority = auth.Value.Authority;
-        jwt.Audience = auth.Value.Audience;
-        jwt.MapInboundClaims = false;
-    });
+
+// The phone app calls from inside its web view (origin https://localhost on Android), and in development
+// from "npm start" (4200) or "ionic serve" (8100). Origins are configuration so Azure can add more without a build.
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy =>
+    policy.WithOrigins(corsOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUser>());
@@ -97,13 +100,10 @@ app.UseStatusCodePages();
 app.Use((context, next) =>
 {
     context.Response.Headers["X-Contract-Version"] = ContractVersion;
+    context.Response.Headers["X-Api-Version"] = apiVersion;
     return next(context);
 });
-if (devSignIn)
-{
-    // The app served by "npm start" (4200) or "ionic serve" (8100) calling this API from the browser.
-    app.UseCors();
-}
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();

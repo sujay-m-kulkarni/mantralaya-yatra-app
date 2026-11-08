@@ -31,6 +31,21 @@ public class YatraUseCaseTests
         Assert.Equal(4, _world.Directory.SeededSevaTypes.Count);
     }
 
+    [Fact]
+    public async Task The_owner_signed_in_with_the_api_key_has_no_email_and_still_starts_a_yatra()
+    {
+        _world.User.Email = null;
+
+        var result = await Create.HandleAsync(
+            new CreateYatraRequest("Mantralaya Yatra 2027", new DateOnly(2027, 1, 10), new DateOnly(2027, 1, 15), null),
+            CancellationToken.None);
+
+        Assert.Equal("accounts", result.Value.Role);
+        var founder = _world.Directory.Members.Single(m => m.YatraId == result.Value.Id);
+        Assert.Equal("Accountant", founder.DisplayName);
+        Assert.Equal("", founder.Email);
+    }
+
     [Theory]
     [InlineData("", "2027-01-10", "2027-01-15")]
     [InlineData("Yatra", "2027-01-15", "2027-01-10")]

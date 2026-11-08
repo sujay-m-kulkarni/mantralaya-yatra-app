@@ -11,7 +11,7 @@ internal static class RoleWire
     public static string ToWire(this MemberRole role) => role.ToString().ToLowerInvariant();
 }
 
-/// <summary>Starts a new yatra. Whoever creates it becomes its accountant, and the four sevas are seeded without rates.</summary>
+/// <summary>Starts a new yatra. Whoever creates it (the owner) becomes its accountant; the four sevas are seeded without rates.</summary>
 public sealed class CreateYatra
 {
     /// <summary>A yatra longer than this is almost certainly a typing slip in a date.</summary>
@@ -46,12 +46,7 @@ public sealed class CreateYatra
             return Error.Validation("dates_invalid", $"A yatra can last at most {MaxDays} days.");
         }
 
-        if (string.IsNullOrWhiteSpace(_user.Email))
-        {
-            return Error.Validation("email_missing", "Your sign-in carries no email address, which members are matched on.");
-        }
-
-        var displayName = Text.Clean(request.DisplayName) ?? _user.Email;
+        var displayName = Text.Clean(request.DisplayName) ?? Text.Clean(_user.Email) ?? "Accountant";
         if (displayName.Length > YatraMember.MaxDisplayNameLength)
         {
             return Error.Validation("display_name_invalid", $"displayName is longer than {YatraMember.MaxDisplayNameLength} characters.");
@@ -72,7 +67,8 @@ public sealed class CreateYatra
             Id = Guid.NewGuid(),
             YatraId = yatra.Id,
             UserId = _user.UserId,
-            Email = YatraMember.NormaliseEmail(_user.Email),
+            // The owner signs in with the API key and has no email; members are known by name.
+            Email = _user.Email is null ? "" : YatraMember.NormaliseEmail(_user.Email),
             DisplayName = displayName,
             Role = MemberRole.Accounts,
             AddedAt = now,
