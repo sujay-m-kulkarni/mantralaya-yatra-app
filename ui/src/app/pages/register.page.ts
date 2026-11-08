@@ -157,7 +157,7 @@ import { SyncChipComponent } from '../core/sync-chip.component';
     h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
     .yatra-link { font-size: 12px; color: var(--my-muted); text-decoration: none; }
     .day-switch { display: flex; align-items: center; justify-content: space-between; background: var(--my-soft); border-radius: 12px; padding: 0 4px; }
-    .day-switch button { width: 44px; height: 44px; border: none; background: transparent; color: #44403c; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .day-switch button { width: 44px; height: 44px; border: none; background: transparent; color: #334155; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .day-switch button:disabled { opacity: 0.35; }
     .day-label { text-align: center; }
     .day { font-size: 15px; font-weight: 600; }
@@ -165,10 +165,10 @@ import { SyncChipComponent } from '../core/sync-chip.component';
 
     .summary { background: var(--my-ink); color: #fff; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
     .summary-top { display: flex; justify-content: space-between; align-items: flex-start; }
-    .eyebrow { font-size: 12px; color: #d6d3d1; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .eyebrow { font-size: 12px; color: #c7d6e4; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
     .eyebrow.pending { color: #fca5a5; }
     .big { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 32px; font-weight: 700; margin-top: 2px; }
-    .count { background: #fde68a; color: #78350f; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .count { background: #bae6fd; color: #0c3a57; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
     .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     .tile { background: var(--my-ink-2); border-radius: 10px; padding: 10px; font-size: 15px; font-weight: 600; }
     .tile .eyebrow { font-size: 11px; text-transform: none; letter-spacing: 0; margin-bottom: 2px; }
@@ -177,7 +177,7 @@ import { SyncChipComponent } from '../core/sync-chip.component';
     .chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
     .chips button { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 20px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; background: #fff; color: var(--my-text); border: 1px solid var(--my-border); }
     .chips button[aria-pressed='true'] { background: var(--my-accent); color: #fff; border-color: var(--my-accent); }
-    .n { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--my-soft); color: #44403c; }
+    .n { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--my-soft); color: #334155; }
     .chips button[aria-pressed='true'] .n { background: rgba(255, 255, 255, 0.22); color: #fff; }
 
     .slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

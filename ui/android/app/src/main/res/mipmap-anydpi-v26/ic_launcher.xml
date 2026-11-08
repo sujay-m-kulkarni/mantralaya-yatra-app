@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon: Android masks these 108dp layers to the phone's icon shape. The diya in the
+<!-- Adaptive icon: Android masks these 108dp layers to the phone's icon shape. The padukas in the
      foreground already sits inside the safe circle (ui/assets), so no inset is added here.
      The monochrome layer is used for Android 13+ themed icons; only its shape matters. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">

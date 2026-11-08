@@ -104,11 +104,11 @@ On the app's **Set up** screen, open **This build**: version, commit, build time
 
 ## App icon and splash screen
 
-The sources are in `ui/assets` (a diya on saffron). After changing them:
+The sources are in `ui/assets`: a pair of padukas in gold on Tungabhadra blue, also drawn in `ui/public/icon.svg` and on the lock screen. After changing them:
 
 ```powershell
-npx @capacitor/assets@3 generate --android --assetPath assets --iconBackgroundColor "#B45309" --splashBackgroundColor "#FBFAF7" --splashBackgroundColorDark "#1C1917"
+npx @capacitor/assets@3 generate --android --assetPath assets --iconBackgroundColor "#1E5A8A" --splashBackgroundColor "#F4F7FA" --splashBackgroundColorDark "#0F2236"
 git checkout -- android/app/src/main/res/mipmap-anydpi-v26
 ```
 
-The second line keeps the two adaptive-icon files as they are: the generator adds an inset that would shrink the diya.
+The second line keeps the two adaptive-icon files as they are: the generator adds an inset that would shrink the padukas.

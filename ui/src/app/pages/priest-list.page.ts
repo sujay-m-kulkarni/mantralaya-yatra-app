@@ -64,7 +64,7 @@ import { shareText } from '../core/share';
   `,
   styles: `
     .day-switch { display: flex; align-items: center; justify-content: space-between; background: var(--my-soft); border-radius: 12px; padding: 0 4px; }
-    .day-switch button { width: 44px; height: 44px; border: none; background: transparent; color: #44403c; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .day-switch button { width: 44px; height: 44px; border: none; background: transparent; color: #334155; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .day-label { text-align: center; }
     .day { font-size: 15px; font-weight: 600; }
     .muted { font-size: 13px; color: var(--my-muted); font-weight: 400; }

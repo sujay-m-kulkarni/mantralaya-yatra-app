@@ -17,21 +17,21 @@
 @import '@ionic/angular/css/structure.css';
 @import '@ionic/angular/css/typography.css';
 
-/* The look from the Seva Register mockups: warm saffron on an off-white ground. */
+/* Theme: Tungabhadra blue, after the river at Mantralaya: deep river blue on a soft morning-sky ground. */
 :root {
-  --my-bg: #fbfaf7;
+  --my-bg: #f4f7fa;
   --my-card: #ffffff;
-  --my-line: #e7e5e4;
-  --my-border: #d6d3d1;
-  --my-text: #1c1917;
-  --my-muted: #57534e;
-  --my-soft: #f5f5f4;
-  --my-accent: #b45309;
-  --my-accent-dark: #92400e;
-  --my-accent-soft: #fef3e2;
-  --my-accent-line: #fcd9a8;
-  --my-ink: #1c1917;
-  --my-ink-2: #292524;
+  --my-line: #d8e1ea;
+  --my-border: #c7d3df;
+  --my-text: #0f1d2b;
+  --my-muted: #4f5e70;
+  --my-soft: #e8eef4;
+  --my-accent: #1e5a8a;
+  --my-accent-dark: #174a72;
+  --my-accent-soft: #dceaf6;
+  --my-accent-line: #b9d3ea;
+  --my-ink: #0f2236;
+  --my-ink-2: #1c3349;
   --my-ok-bg: #dcfce7;
   --my-ok: #166534;
   --my-bad-bg: #fee2e2;
@@ -44,12 +44,12 @@
   --ion-font-family: 'Inter', system-ui, sans-serif;
   --ion-background-color: var(--my-bg);
   --ion-text-color: var(--my-text);
-  --ion-color-primary: #b45309;
-  --ion-color-primary-rgb: 180, 83, 9;
+  --ion-color-primary: #1e5a8a;
+  --ion-color-primary-rgb: 30, 90, 138;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #9e4908;
-  --ion-color-primary-tint: #bc6422;
+  --ion-color-primary-shade: #1a4f79;
+  --ion-color-primary-tint: #356b96;
   --ion-toolbar-background: #ffffff;
   --ion-toolbar-color: var(--my-text);
   --ion-item-background: #ffffff;
@@ -79,7 +79,7 @@ h2,
   &.bad { background: var(--my-bad-bg); color: var(--my-bad); }
   &.info { background: var(--my-info-bg); color: var(--my-info); }
   &.warn { background: var(--my-warn-bg); color: var(--my-warn); }
-  &.plain { background: var(--my-soft); color: #44403c; }
+  &.plain { background: var(--my-soft); color: #334155; }
   &.seva { background: var(--my-accent-soft); color: var(--my-accent-dark); font-weight: 600; }
 }
 
@@ -92,7 +92,7 @@ h2,
 .section-label {
   font-size: 13px;
   font-weight: 700;
-  color: #44403c;
+  color: #334155;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 8px;
@@ -106,7 +106,7 @@ h2,
   label {
     font-size: 13px;
     font-weight: 600;
-    color: #44403c;
+    color: #334155;
   }
 
   input,

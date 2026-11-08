@@ -171,12 +171,12 @@ import { ToastService } from '../core/toast';
     .quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     .tile { min-height: 58px; padding: 6px 6px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; text-align: center; font: inherit; background: #fff; border: 1px solid var(--my-border); color: var(--my-text); cursor: pointer; }
     .tile.on { background: var(--my-accent-soft); border: 2px solid var(--my-accent); }
-    .tile:disabled { background: var(--my-soft); border-style: dashed; color: #78716c; cursor: not-allowed; }
+    .tile:disabled { background: var(--my-soft); border-style: dashed; color: #64748b; cursor: not-allowed; }
     .tile-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
     .tile-price { font-size: 11px; color: var(--my-muted); font-weight: 600; }
     .hint.full { color: var(--my-bad); }
     .amount { font-size: 24px; font-weight: 700; padding: 8px 12px; border-radius: 10px; background: var(--my-soft); color: var(--my-text); }
-    .label { font-size: 13px; font-weight: 600; color: #44403c; }
+    .label { font-size: 13px; font-weight: 600; color: #334155; }
     .span-2 { grid-column: 1 / -1; }
     select { appearance: auto; }
     .segmented.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
