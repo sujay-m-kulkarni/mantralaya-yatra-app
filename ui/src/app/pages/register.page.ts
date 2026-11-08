@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IonContent, IonHeader, IonRefresher, IonRefresherContent, IonToolbar, RefresherCustomEvent } from '@ionic/angular';
 
@@ -208,6 +208,18 @@ export class RegisterPage {
 
   private readonly yatra = computed(() => this.ledger.yatra()!);
   readonly day = signal(clampDay(istDay(new Date()), this.yatra().startsOn, this.yatra().endsOn));
+
+  constructor() {
+    // After a seva is saved, show the day it was booked for.
+    effect(() => {
+      const focus = this.ledger.focusDay();
+      if (!focus) return;
+      untracked(() => {
+        this.day.set(clampDay(focus, this.yatra().startsOn, this.yatra().endsOn));
+        this.ledger.focusDay.set(null);
+      });
+    });
+  }
   readonly filter = signal<string | null>(null);
 
   readonly register = computed(() => dayRegister(this.ledger.ledger(), this.day()));

@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { IonBackButton, IonButtons, IonContent, IonFooter, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
+import { RouterLink } from '@angular/router';
+import { IonBackButton, IonButtons, IonContent, IonFooter, IonHeader, IonTitle, IonToolbar, NavController } from '@ionic/angular';
 
 import { clampDay, dayNumber, formatDay, istDay } from '../core/dates';
 import { InrPipe } from '../core/inr.pipe';
@@ -11,6 +11,7 @@ import { PAYMENT_MODES, PaymentMode, Sankalpa, SevaType } from '../core/models';
 import { paiseToInput, parseRupees } from '../core/money';
 import { GOTRAS, NAKSHATRAS, OTHER_GOTRA, RASHIS } from '../core/sankalpa-lists';
 import { mostUsedSevas } from '../core/sevas';
+import { ToastService } from '../core/toast';
 
 /** Book a seva for a devotee and record the money taken. Saved on the phone at once; sent when there is network. */
 @Component({
@@ -158,7 +159,7 @@ import { mostUsedSevas } from '../core/sevas';
         </div>
         <button class="btn" type="submit" form="book" [disabled]="saving()">
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-          {{ saving() ? 'Saving…' : 'Save seva' }}
+          {{ saving() ? 'Saving…' : 'Save' }}
         </button>
       </div>
     </ion-footer>
@@ -187,7 +188,8 @@ import { mostUsedSevas } from '../core/sevas';
 })
 export class BookPage implements OnInit {
   readonly ledger = inject(LedgerService);
-  private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+  private readonly nav = inject(NavController);
 
   /** From the register's "Book seva" button: the day being viewed. */
   readonly date = input<string>();
@@ -300,8 +302,10 @@ export class BookPage implements OnInit {
         amountPaise,
         payment: mode && paidPaise ? { amountPaise: paidPaise, mode, reference: this.reference } : null,
       });
-      // Saved only. The receipt can be sent from the booking screen whenever it is wanted.
-      await this.router.navigate(['/booking', booking.id], { replaceUrl: true });
+      // Saved: a green note, then back to the seva list for that day.
+      this.toast.ok(`Seva saved · ${booking.devoteeName} · ${type.name}`);
+      this.ledger.focusDay.set(booking.sevaDate);
+      await this.nav.navigateBack('/register');
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : String(e));
     } finally {

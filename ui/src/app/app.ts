@@ -7,6 +7,7 @@ import { IonApp, IonRouterOutlet } from '@ionic/angular';
 import { AppLockService } from './core/app-lock';
 import { Darshan } from './darshan';
 import { LedgerService } from './core/ledger.service';
+import { ToastService } from './core/toast';
 
 /** How often to sync while the app is open and online. */
 const SYNC_EVERY_MS = 60_000;
@@ -17,6 +18,12 @@ const SYNC_EVERY_MS = 60_000;
   template: `
     <ion-app>
       <ion-router-outlet></ion-router-outlet>
+      @if (toast.current(); as t) {
+        <div class="toast" [class.ok]="t.kind === 'ok'" role="status" aria-live="polite" (click)="toast.dismiss()">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+          {{ t.text }}
+        </div>
+      }
       @if (darshan()) {
         <!-- Each time the app opens (or is unlocked again), before the books. -->
         <app-darshan (done)="darshan.set(false)" />
@@ -37,6 +44,11 @@ const SYNC_EVERY_MS = 60_000;
     </ion-app>
   `,
   styles: `
+    .toast { position: fixed; left: 16px; right: 16px; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); z-index: 8000; display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); animation: toast-in .25s ease-out; }
+    .toast.ok { background: #15803d; color: #fff; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
     .lock { position: fixed; inset: 0; z-index: 10000; background: var(--my-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; }
     .lock h1 { margin: 8px 0 0; font-size: 24px; }
     .lock p { margin: 0; color: var(--my-muted); font-size: 15px; }
@@ -47,6 +59,7 @@ const SYNC_EVERY_MS = 60_000;
 export class App {
   private readonly ledger = inject(LedgerService);
   readonly lock = inject(AppLockService);
+  readonly toast = inject(ToastService);
   readonly darshan = signal(false);
 
   constructor() {

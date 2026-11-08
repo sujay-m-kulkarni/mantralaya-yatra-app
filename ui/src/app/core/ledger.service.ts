@@ -146,6 +146,9 @@ export class LedgerService {
     void this.sync();
   }
 
+  /** A day another screen wants the register to show next (the day of a seva just saved). */
+  readonly focusDay = signal<string | null>(null);
+
   /**
    * The accountant creates or changes a seva. Sevas live on the server (it numbers receipts by their code),
    * so this needs network; the change then comes back to this phone with a sync.
