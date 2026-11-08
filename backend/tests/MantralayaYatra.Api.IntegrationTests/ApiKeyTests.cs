@@ -20,6 +20,10 @@ public class ApiKeyTests(ApiFactory api) : IClassFixture<ApiFactory>
         var yatra = (await created.Content.ReadFromJsonAsync<YatraOut>())!;
         Assert.Equal("accounts", yatra.Role);
 
+        // A new yatra starts with no sevas: the owner creates Ashtottara with its price.
+        var seva = await owner.PutAsJsonAsync($"/api/v1/yatras/{yatra.Id}/seva-types/AST", new SevaTypeIn("Ashtottara", 25100, null, true, true, 1));
+        Assert.Equal(HttpStatusCode.OK, seva.StatusCode);
+
         var booking = new BookingIn(Guid.NewGuid(), "AST", Today, "Gopal Hegde", null,
             new SankalpaDto("Gopal Hegde & family", "Kashyapa", "Rohini", "Vrishabha", null), 25100, "AST-D-SUJ-0001", DateTimeOffset.UtcNow.AddMinutes(-1));
         var pushed = await owner.PostAsJsonAsync($"/api/v1/yatras/{yatra.Id}/sync/push", new LedgerPushRequest(Guid.NewGuid(), [booking], null, null));

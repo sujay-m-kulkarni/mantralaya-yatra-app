@@ -7,7 +7,7 @@ The mockups are on the "Seva Register" design canvas in Claude (private to the o
 | Screen | What it shows | API it uses |
 |---|---|---|
 | Seva Register (daily list) | Day switcher; collected today (cash, UPI, pending); seva filter chips; slot usage per seva with "Full"; bookings with receipt, devotee, sankalpa, amount and payment mode; "Priest list" button; "Book seva" button | `GET /register`, `GET /register/priest-list`, local SQLite between syncs |
-| Book a seva | Seva choice (full ones disabled), pilgrim search or walk-in, sankalpa fields, amount, cash / UPI / bank with UTR, collected by, "Save & send receipt on WhatsApp" | Writes locally, then `POST /sync/push` |
+| Book a seva | Seva choice (full ones disabled), pilgrim search or walk-in, sankalpa (gotra, nakshatra and rashi from lists), amount fixed by the seva's price, cash / UPI / bank with UTR, collected by, "Save" (the receipt is sent from the booking screen when wanted) | Writes locally, then `POST /sync/push` |
 
 Rates, names and limits in the mockups are sample data, not the group's real figures.
 

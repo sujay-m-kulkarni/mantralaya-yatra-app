@@ -142,6 +142,14 @@ public class SevaRegisterTests(ApiFactory api) : IClassFixture<ApiFactory>
         var response = await client.PostAsJsonAsync("/api/v1/yatras", new CreateYatraRequest("Mantralaya Yatra 2026", Start, Start.AddDays(7), "Accounts"));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var yatra = await response.Content.ReadFromJsonAsync<YatraOut>();
+
+        // A new yatra has no sevas; the accountant creates them, each with its price.
+        foreach (var (code, name, order) in new[] { ("SSA", "Sarva Samarpana Seva", 1), ("SRV", "Sarva Seva", 2), ("HST", "Hastodaka", 3), ("AST", "Ashtottara", 4) })
+        {
+            var saved = await client.PutAsJsonAsync($"{Base(yatra!.Id)}/seva-types/{code}", new SevaTypeIn(name, 100100, null, true, true, order));
+            Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        }
+
         return (client, yatra!.Id);
     }
 

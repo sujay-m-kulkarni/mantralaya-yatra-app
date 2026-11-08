@@ -18,6 +18,7 @@ export const routes: Routes = [
   { path: 'register', canActivate: [needsYatra], loadComponent: () => import('./pages/register.page').then((m) => m.RegisterPage) },
   { path: 'book', canActivate: [needsYatra], loadComponent: () => import('./pages/book.page').then((m) => m.BookPage) },
   { path: 'booking/:id', canActivate: [needsYatra], loadComponent: () => import('./pages/booking.page').then((m) => m.BookingPage) },
+  { path: 'sevas', canActivate: [needsYatra], loadComponent: () => import('./pages/sevas.page').then((m) => m.SevasPage) },
   { path: 'priest-list', canActivate: [needsYatra], loadComponent: () => import('./pages/priest-list.page').then((m) => m.PriestListPage) },
   { path: '**', redirectTo: 'register' },
 ];

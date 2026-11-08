@@ -4,7 +4,7 @@ import { ApiClient, ApiError, Connection } from './api';
 import { nowIst } from './dates';
 import { newId } from './ids';
 import { Ledger, dueOn } from './ledger';
-import { Booking, Payment, PaymentMode, Reversal, Sankalpa, YatraSummary } from './models';
+import { Booking, Payment, PaymentMode, Reversal, Sankalpa, SevaType, YatraSummary } from './models';
 import { DocWrite, YatraData, emptyData } from './store/local-store';
 import { applyPulledChanges, applyPushResults, buildPushes, draftReceiptNo, pendingCount, withWrites } from './sync';
 
@@ -144,6 +144,17 @@ export class LedgerService {
     }
     await this.commit(yatra.id, [{ collection: 'payments', doc: this.newPayment(bookingId, payment, nowIst()) }]);
     void this.sync();
+  }
+
+  /**
+   * The accountant creates or changes a seva. Sevas live on the server (it numbers receipts by their code),
+   * so this needs network; the change then comes back to this phone with a sync.
+   */
+  async saveSevaType(code: string, seva: Omit<SevaType, 'id' | 'code'>): Promise<SevaType> {
+    const yatra = this.requireYatra();
+    const saved = await this.api().saveSevaType(yatra.id, code, seva);
+    await this.sync();
+    return saved;
   }
 
   /** The accountant cancels a booking or payment. The server refuses reversals from anyone else. */
