@@ -6,6 +6,7 @@
   Everything goes into its own resource group, with its own App Service plan; nothing is shared with
   other apps. GitHub's deploy identity can touch this resource group only.
   Safe to run again: anything that already exists is left as it is.
+  Also makes the API key the phone app sends (stored in the web app, and in ui\app.secrets.json for laptop builds).
   Explained step by step in docs/guides/azure-setup.md.
 
   Run from the repository folder in PowerShell:
@@ -109,11 +110,25 @@ Invoke-AzCli webapp config set --resource-group $rg --name $app --generic-config
 Remove-Item $healthFile
 Invoke-AzCli webapp update --resource-group $rg --name $app --https-only true --output none
 Invoke-AzCli webapp config connection-string set --resource-group $rg --name $app --connection-string-type SQLAzure --settings "Yatra=$conn" --output none
-# Placeholders that let the API start; replaced once the Entra External ID tenant exists.
-Invoke-AzCli webapp config appsettings set --resource-group $rg --name $app --output none --settings `
-  "Database__MigrateOnStartup=false" `
-  "Auth__Authority=https://login.microsoftonline.com/$tenant/v2.0" `
-  "Auth__Audience=api://mantralaya-yatra"
+Invoke-AzCli webapp config appsettings set --resource-group $rg --name $app --output none --settings "Database__MigrateOnStartup=false"
+
+Step 'API key (built into your app; lets the server trust it)'
+# One user, the accountant: the app sends this key with every call. Made once; kept on later runs.
+$existingKey = Invoke-AzCli webapp config appsettings list --resource-group $rg --name $app --query "[?name=='Access__ApiKey'].value | [0]" -o tsv
+if ($existingKey) {
+  $apiKey = $existingKey
+  Write-Host 'Keeping the existing key.'
+} else {
+  $bytes = New-Object byte[] 32
+  [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $apiKey = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+  Invoke-AzCli webapp config appsettings set --resource-group $rg --name $app --output none --settings "Access__ApiKey=$apiKey"
+  Write-Host 'Made a new key and gave it to the web app.'
+}
+# For builds on this laptop. Git-ignored (ui/.gitignore): never commit it.
+$secretsPath = Join-Path $PSScriptRoot '..\ui\app.secrets.json'
+[IO.File]::WriteAllText([IO.Path]::GetFullPath($secretsPath), "{ `"apiKey`": `"$apiKey`" }`n", (New-Object Text.UTF8Encoding $false))
+Write-Host "Wrote ui\app.secrets.json (git-ignored)."
 
 Step "GitHub's deploy identity $deployApp (OIDC, no password)"
 $appId = Invoke-AzCli ad app list --display-name $deployApp --query '[0].appId' -o tsv
@@ -160,6 +175,9 @@ Write-Host @"
        AZURE_SQL_SERVER       $sql
        AZURE_WEBAPP_NAME      $app
    - Environment secret AZURE_SQL_CONNECTION_STRING: it is on your clipboard now (paste it, then copy something else).
+
+   Repository secret for release APKs (Settings > Secrets and variables > Actions > New repository secret):
+       API_KEY  = the "apiKey" value in ui\app.secrets.json
 
 2. Your API's address: https://$app.azurewebsites.net (already written into ui\app.config.json).
 

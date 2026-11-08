@@ -17,7 +17,7 @@ flowchart LR
 | Domain | Yatra, members and roles, seva types, ledger entries (booking, payment, reversal), receipt numbers, booking positions | anything else in the solution, EF Core, ASP.NET Core |
 | Application | One class per use case, the ports they need (`ILedgerStore`, `IYatraDirectory`, `IUserDirectory`, `ICurrentUser`, `IYatraContext`), wire contracts, `Result<T>` | Infrastructure, Api, EF Core, ASP.NET Core |
 | Infrastructure | `YatraDbContext`, the EF adapters for the ports, the yatra lock and the sync sequence | Api |
-| Api | Minimal API endpoints, Entra token validation, the dev sign-in header, membership filter, composition root | — |
+| Api | Minimal API endpoints, the API key check, the dev sign-in header, membership filter, composition root | — |
 
 ## Patterns
 
@@ -38,11 +38,13 @@ flowchart LR
 | One role | Accounts, Volunteer, Viewer | Only the accountant reverses, sets rates and adds members |
 | Change id for idempotency | The entry's own id (made on the phone) | An entry is never edited, so its id is the natural idempotency key |
 
-Kept the same: the sync sequence as the pull cursor, push-then-pull, client-generated ids, integer paise, snake_case tables, Entra External ID with a dev header in Development, rate limiting per user, `X-Contract-Version` header, health endpoints.
+Kept the same: the sync sequence as the pull cursor, push-then-pull, client-generated ids, integer paise, snake_case tables, a dev header in Development, rate limiting per user, `X-Contract-Version` header, health endpoints.
 
 ## Identity and roles
 
-The API validates Entra External ID tokens (`sub`, `email`) and never signs anyone in. A first call creates the internal user. Membership is per yatra:
+The app has **one user, the accountant**. The phone app carries a long random key (built into the APK, never in the repository) and sends it as `X-Api-Key`; `ApiKeySignIn` compares it in constant time with the web app's `Access__ApiKey` and signs the request in as the owner. The first call creates the internal user `owner` in `app_user`. On the phone, the app itself is locked behind the phone's fingerprint, face or PIN (the fingerprint never leaves the phone; it protects the books from someone holding it). No Azure user directory and no email are involved.
+
+Roles and members remain in the model, per yatra, for a later multi-user version; today the owner is the Accounts member of every yatra they create:
 
 | Role | Can |
 |---|---|
@@ -50,7 +52,7 @@ The API validates Entra External ID tokens (`sub`, `email`) and never signs anyo
 | Volunteer | Everything a viewer can, plus push bookings and payments |
 | Accounts | Everything, plus reversals, seva rates and limits, adding members |
 
-The accountant adds a member by email. The member row is claimed the first time someone signs in with that email (matched case-insensitively), so volunteers need no codes or links.
+Adding members (`POST /yatras/{id}/members`) exists in the API but is not used by the app.
 
 ## Data
 

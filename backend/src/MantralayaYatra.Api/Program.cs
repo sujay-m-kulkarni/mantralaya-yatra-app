@@ -8,9 +8,7 @@ using MantralayaYatra.Application.LedgerSync;
 using MantralayaYatra.Application.Register;
 using MantralayaYatra.Application.Yatras;
 using MantralayaYatra.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Options;
 
 const string ContractVersion = "1";
 
@@ -21,16 +19,19 @@ const string PerUserPolicy = "per-user";
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Identity: validate Entra External ID tokens; keep claim names as issued ("sub", not a mapped URI).
-builder.Services.AddOptions<AuthOptions>()
-    .BindConfiguration(AuthOptions.Section)
-    .ValidateDataAnnotations()
+// Identity: one user, the accountant, whose app sends the API key (see Auth/ApiKeySignIn.cs).
+// Outside Development the key must be set and long, or the API refuses to start.
+builder.Services.AddOptions<AccessOptions>()
+    .BindConfiguration(AccessOptions.Section)
+    .Validate(
+        access => builder.Environment.IsDevelopment() || access.ApiKey.Length >= AccessOptions.MinKeyLength,
+        $"Access:ApiKey must be at least {AccessOptions.MinKeyLength} characters (App Service setting Access__ApiKey).")
     .ValidateOnStart();
 // In Development only, the X-Dev-User header also signs a request in (see Auth/DevSignIn.cs).
 var devSignIn = builder.Environment.IsDevelopment();
 var authentication = builder.Services
-    .AddAuthentication(devSignIn ? DevSignIn.PolicyScheme : JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer();
+    .AddAuthentication(devSignIn ? DevSignIn.PolicyScheme : ApiKeySignIn.Scheme)
+    .AddApiKeySignIn();
 if (devSignIn)
 {
     authentication.AddDevSignIn();
@@ -43,16 +44,6 @@ builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy =>
     policy.WithOrigins(corsOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()));
-builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-    .Configure<IOptions<AuthOptions>>((jwt, auth) =>
-    {
-        // Entra External ID: https://<tenant-id>.ciamlogin.com/<tenant-id>/v2.0. The issuer to accept is read
-        // from that authority's metadata.
-        jwt.Authority = auth.Value.Authority;
-        // v2 access tokens carry the API's client id as their audience; its api:// URI is accepted too.
-        jwt.TokenValidationParameters.ValidAudiences = auth.Value.Audiences;
-        jwt.MapInboundClaims = false;
-    });
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUser>());

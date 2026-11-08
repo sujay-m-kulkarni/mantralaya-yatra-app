@@ -1,28 +1,7 @@
-using System.ComponentModel.DataAnnotations;
 using MantralayaYatra.Application.Abstractions;
 using MantralayaYatra.Domain.Yatras;
 
 namespace MantralayaYatra.Api.Auth;
-
-/// <summary>Microsoft Entra External ID settings. The API only validates tokens; it never signs anyone in.</summary>
-public sealed class AuthOptions
-{
-    public const string Section = "Auth";
-
-    /// <summary>The tenant's issuer, e.g. https://&lt;tenant&gt;.ciamlogin.com/&lt;tenant-id&gt;/v2.0.</summary>
-    [Required]
-    public string Authority { get; set; } = "";
-
-    /// <summary>
-    /// The API's application (client) id and/or its app id URI, separated by commas, e.g.
-    /// "6f1c…, api://6f1c…". A token is accepted if its audience is any of them.
-    /// </summary>
-    [Required]
-    public string Audience { get; set; } = "";
-
-    public string[] Audiences =>
-        Audience.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-}
 
 /// <summary>Claim names as they appear in the token (inbound claim mapping is off).</summary>
 public static class TokenClaims

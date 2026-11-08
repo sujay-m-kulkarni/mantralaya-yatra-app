@@ -1,9 +1,4 @@
 {
-  "$comment": "Where the app connects and how it signs in. Not secrets: every value here is visible inside any APK. Builds read this file (scripts/write-version.mjs, capacitor.config.ts); MY_API_URL overrides apiUrl, e.g. http://localhost:5180 for working against the API on a laptop. Filled in from infra/azure-setup.ps1 and infra/entra-setup.ps1 output.",
-  "apiUrl": "https://mantralaya-yatra-api-sujay.azurewebsites.net",
-  "auth": {
-    "authority": "",
-    "clientId": "",
-    "scope": ""
-  }
+  "$comment": "Where the app connects. Not secret. Builds read it (scripts/write-version.mjs, capacitor.config.ts); MY_API_URL overrides apiUrl for working against the API on a laptop. The API key is NOT here: it comes from app.secrets.json (git-ignored, written by infra/azure-setup.ps1), MY_API_KEY, or the API_KEY GitHub secret.",
+  "apiUrl": "https://mantralaya-yatra-api-sujay.azurewebsites.net"
 }

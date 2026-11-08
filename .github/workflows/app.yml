@@ -90,18 +90,19 @@ jobs:
       contents: write
       pull-requests: read
     env:
-      HAS_KEYSTORE: ${{ secrets.MY_KEYSTORE_BASE64 != '' }}
+      # A release needs both the signing key and the API key the app sends to the Azure API.
+      HAS_KEYSTORE: ${{ secrets.MY_KEYSTORE_BASE64 != '' && secrets.API_KEY != '' }}
     steps:
-      # On a merge to main, a missing key only warns, so main does not turn red before the key exists.
+      # On a merge to main, missing secrets only warn, so main does not turn red before they exist.
       # A tag or a manual release fails, because then a release was clearly wanted.
-      - name: Stop if the signing key has not been added
+      - name: Stop if the signing key or API key has not been added
         if: env.HAS_KEYSTORE != 'true'
         run: |
           if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
-            echo "::warning::No release: the signing key secrets are missing. See docs/guides/build-pipeline.md."
+            echo "::warning::No release: the signing key secrets or API_KEY are missing. See docs/guides/build-pipeline.md."
             exit 0
           fi
-          echo "::error::The signing key secrets are missing. See docs/guides/build-pipeline.md."
+          echo "::error::The signing key secrets or API_KEY are missing. See docs/guides/build-pipeline.md."
           exit 1
 
       - uses: actions/checkout@v5
@@ -141,11 +142,12 @@ jobs:
           echo "MY_LABELS=$labels" >> "$GITHUB_ENV"
           echo "App version $version (labels: ${labels:-none})" >> "$GITHUB_STEP_SUMMARY"
 
-      # MY_VERSION (above) and MY_API_URL go into the app: the version it shows and the server it offers.
+      # MY_VERSION (above) and the API key go into the app; the server address comes from ui/app.config.json.
       - name: Build the web app and copy it into the Android project
         if: env.HAS_KEYSTORE == 'true'
         working-directory: ui
         env:
+          MY_API_KEY: ${{ secrets.API_KEY }}
           MY_API_URL: ${{ vars.API_URL }}
         run: npm ci && npm run build && npx cap sync android
 

@@ -39,7 +39,7 @@ npm install
 npm start            # http://localhost:4200
 ```
 
-On the Set up screen leave the server as `http://localhost:5180` and enter any name and email. Sign-in uses the API's Development header for now.
+By default the app talks to the Azure API with the key from `app.secrets.json`. To use the API on this laptop instead: `$env:MY_API_URL = "http://localhost:5180"; $env:MY_DEV_SIGNIN = "1"; npm start`, then enter any name and email on the Set up screen.
 
 On a phone, or to make an APK file to install:
 
@@ -56,5 +56,4 @@ Phone and laptop setup, signed release APKs, installing from GitHub Releases and
 
 ## Not built yet
 
-- Entra External ID sign-in (the app sends the Development header today)
 - Pilgrim register (search a pilgrim instead of typing the name), expenses, cash wallets

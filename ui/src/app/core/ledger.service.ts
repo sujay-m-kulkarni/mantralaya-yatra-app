@@ -1,7 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { ApiClient, ApiError, Connection } from './api';
-import { AuthService } from './auth';
 import { nowIst } from './dates';
 import { newId } from './ids';
 import { Ledger, dueOn } from './ledger';
@@ -10,7 +9,7 @@ import { DocWrite, YatraData, emptyData } from './store/local-store';
 import { applyPulledChanges, applyPushResults, buildPushes, draftReceiptNo, pendingCount, withWrites } from './sync';
 
 import { FETCH, LOCAL_STORE } from './tokens';
-import { DEFAULT_SERVER } from './version';
+import { API_KEY, DEFAULT_SERVER } from './version';
 
 export { FETCH, LOCAL_STORE } from './tokens';
 
@@ -56,7 +55,6 @@ const META = {
 export class LedgerService {
   private readonly store = inject(LOCAL_STORE);
   private readonly fetchFn = inject(FETCH);
-  private readonly auth = inject(AuthService);
 
   readonly settings = signal<Settings | null>(null);
   readonly yatra = signal<YatraSummary | null>(null);
@@ -84,10 +82,9 @@ export class LedgerService {
 
   api(): ApiClient {
     const settings = this.settings();
-    if (!settings) throw new ApiError('Set up your name and sign in first.', 0);
-    const connection: Connection = this.auth.enabled
-      ? { baseUrl: settings.baseUrl, getToken: () => this.auth.accessToken() }
-      : settings;
+    if (!settings) throw new ApiError('Set up your name first.', 0);
+    // Builds with the API key always talk to their own server (Azure); developer builds use what was entered.
+    const connection: Connection = API_KEY ? { baseUrl: DEFAULT_SERVER, apiKey: API_KEY } : settings;
     return new ApiClient(connection, this.fetchFn);
   }
 
@@ -252,8 +249,8 @@ export class LedgerService {
     const settings = await this.store.getMeta(META.settings);
     if (settings) {
       const saved = JSON.parse(settings) as Settings;
-      // A signed-in build always talks to its own server (Azure), whatever an older build saved.
-      this.settings.set(this.auth.enabled ? { ...saved, baseUrl: DEFAULT_SERVER } : saved);
+      // A build with the API key always talks to its own server (Azure), whatever an older build saved.
+      this.settings.set(API_KEY ? { ...saved, baseUrl: DEFAULT_SERVER } : saved);
     }
     const yatra = await this.store.getMeta(META.yatra);
     if (yatra) await this.selectYatra(JSON.parse(yatra) as YatraSummary);

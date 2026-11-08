@@ -44,7 +44,7 @@ describe('ApiClient', () => {
   });
 
   it('reports no network as offline, so entries stay queued', async () => {
-    const api = new ApiClient({ baseUrl: 'http://api.test', token: 't' }, async () => {
+    const api = new ApiClient({ baseUrl: 'http://api.test', apiKey: 't'.repeat(40) }, async () => {
       throw new TypeError('Failed to fetch');
     });
 

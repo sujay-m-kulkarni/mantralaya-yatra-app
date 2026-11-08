@@ -34,11 +34,6 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
     cleartext: developerBuild,
   },
-  plugins: {
-    // Sign-in tokens are fetched with native HTTP: Entra refuses token requests from a web view's origin
-    // for mobile app registrations. Only calls made through CapacitorHttp go native; fetch is unchanged.
-    CapacitorHttp: { enabled: false },
-  },
 };
 
 export default config;

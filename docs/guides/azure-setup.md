@@ -21,7 +21,7 @@ What gets created, all separate from VERA (its own resource group and App Servic
 | Azure SQL server and database | `sql-mantralaya-yatra-<you>` / `mantralaya-yatra` | Basic |
 | App Service plan (Linux) | `asp-mantralaya-yatra` | B1 (Always On) |
 | Web app (.NET 10) | `mantralaya-yatra-api-<you>` | |
-| Entra app GitHub signs in as (OIDC) | `github-mantralaya-yatra-deploy` | no password or secret |
+| Identity GitHub deploys as (OIDC) | `github-mantralaya-yatra-deploy` | no password or secret |
 
 B1 and Basic are the smallest tiers that stay running; check current prices in the Azure pricing calculator before creating them.
 
@@ -75,13 +75,18 @@ az webapp config set --resource-group $rg --name $app --generic-configurations "
 Remove-Item healthcheck.json
 az webapp update --resource-group $rg --name $app --https-only true
 az webapp config connection-string set --resource-group $rg --name $app --connection-string-type SQLAzure --settings "Yatra=$conn"
-az webapp config appsettings set --resource-group $rg --name $app --settings `
-  "Database__MigrateOnStartup=false" `
-  "Auth__Authority=https://login.microsoftonline.com/$tenant/v2.0" `
-  "Auth__Audience=api://mantralaya-yatra"
+az webapp config appsettings set --resource-group $rg --name $app --settings "Database__MigrateOnStartup=false"
 ```
 
-The two `Auth__` values are placeholders that let the API start. Sign-in setup ([entra-setup.md](entra-setup.md)) replaces them with your External ID tenant's; until then the deployed API answers `401` to the app (the dev header that works on a laptop is off outside Development, on purpose).
+### The API key
+
+The app has one user, you. Your app carries a long random key and sends it with every call; the API refuses anything without it. The script makes the key once and keeps it on later runs:
+
+1. Stores it in the web app as the setting `Access__ApiKey` (the API will not start without one, outside Development).
+2. Writes it to `ui\app.secrets.json` for builds on your laptop. That file is git-ignored: never commit it.
+3. Reminds you to add it as the repository secret `API_KEY`, for release APKs built by GitHub.
+
+To change the key (say a copy of the APK went somewhere it should not): set a new `Access__ApiKey` on the web app, put the same value in `ui\app.secrets.json` and the `API_KEY` secret, and install a new APK. The old APK stops working at once.
 
 ## 4. Let GitHub deploy without a password (OIDC)
 

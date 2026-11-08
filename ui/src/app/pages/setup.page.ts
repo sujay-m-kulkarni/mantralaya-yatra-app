@@ -5,16 +5,16 @@ import { Capacitor } from '@capacitor/core';
 import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
 
 import { ApiError } from '../core/api';
-import { AuthService } from '../core/auth';
+import { AppLockService } from '../core/app-lock';
 import { formatDay } from '../core/dates';
 import { LedgerService } from '../core/ledger.service';
 import { YatraSummary } from '../core/models';
-import { APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/version';
+import { API_KEY, APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/version';
 
 /**
- * First run, or changing yatra: who you are, and which yatra this phone keeps books for.
- * Builds with sign-in settings (every Azure build) sign in by email with Entra External ID and always use the
- * build's server. Developer builds against a laptop API ask for the server, name and email instead.
+ * First run, or changing yatra: your name, and which yatra this phone keeps books for.
+ * Builds with the API key (every Azure build) talk to the build's server and need nothing else; the app itself is
+ * unlocked with your fingerprint (AppLockService). Developer builds against a laptop API ask for a server and email.
  */
 @Component({
   selector: 'app-setup',
@@ -27,27 +27,20 @@ import { APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/versi
     </ion-header>
     <ion-content>
       <div class="page-body">
-        @if (auth.enabled) {
-          <form class="card form" (ngSubmit)="signInAndConnect()">
-            <h2>Sign in</h2>
+        @if (keyBuild) {
+          <form class="card form" (ngSubmit)="connectWithKey()">
+            <h2>Your name</h2>
             <div class="field">
-              <label for="name">Your name</label>
+              <label for="name">Name</label>
               <input id="name" name="name" [(ngModel)]="name" autocomplete="name" required />
-              <span class="hint">Shown to the accountant and used in draft receipt numbers</span>
+              <span class="hint">Shown on receipts and used in draft receipt numbers</span>
             </div>
-            @if (auth.signedIn()) {
-              <p class="signed-in">Signed in as <strong>{{ auth.email() ?? 'your account' }}</strong>
-                <button type="button" class="text-btn" (click)="signOut()">Sign out</button></p>
-              <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Loading…' : 'Show my yatras' }}</button>
-            } @else {
-              <p class="muted">You get a one-time code by email. Use the email the accountant added you with.</p>
-              <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Signing in…' : 'Sign in with email' }}</button>
-            }
+            <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Loading…' : 'Show my yatras' }}</button>
           </form>
         } @else {
           <form class="card form" (ngSubmit)="connect()">
             <h2>Server and you</h2>
-            <p class="muted">Developer build: no sign-in settings in app.config.json, so it uses the API's Development header.</p>
+            <p class="muted">Developer build: no API key, so it uses the API's Development header (a laptop API only).</p>
             <div class="field">
               <label for="server">Server address</label>
               <input id="server" name="server" type="url" inputmode="url" [(ngModel)]="server" required />
@@ -60,7 +53,6 @@ import { APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/versi
             <div class="field">
               <label for="email">Your email</label>
               <input id="email" name="email" type="email" [(ngModel)]="email" autocomplete="email" required />
-              <span class="hint">The accountant adds you to a yatra with this email</span>
             </div>
             <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Connecting…' : 'Connect' }}</button>
           </form>
@@ -74,7 +66,7 @@ import { APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/versi
           <section>
             <h2 class="section-label">Your yatras</h2>
             @if (list.length === 0) {
-              <p class="muted">You are not in a yatra yet. Ask the accountant to add {{ auth.enabled ? (auth.email() ?? 'your email') : email }}, or start one below.</p>
+              <p class="muted">No yatra yet. Start one below; you will be its accountant.</p>
             }
             <div class="list">
               @for (y of list; track y.id) {
@@ -115,7 +107,8 @@ import { APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/versi
             <dt>Commit</dt><dd>{{ build.commit }}</dd>
             <dt>Built</dt><dd>{{ build.builtAt }}</dd>
             <dt>Server</dt><dd>{{ build.server }}</dd>
-            <dt>Sign-in</dt><dd>{{ build.signIn }}</dd>
+            <dt>Server key</dt><dd>{{ build.key }}</dd>
+            <dt>App lock</dt><dd>{{ lock.status() }}</dd>
             <dt>Running on</dt><dd>{{ build.platform }}</dd>
             <dt>Phone storage</dt><dd>{{ build.storage }}</dd>
           </dl>
@@ -143,7 +136,9 @@ import { APP_COMMIT, APP_VERSION, BUILT_AT, DEFAULT_SERVER } from '../core/versi
 })
 export class SetupPage implements OnInit {
   readonly ledger = inject(LedgerService);
-  readonly auth = inject(AuthService);
+  readonly lock = inject(AppLockService);
+  /** Builds with the API key (every Azure build) need only a name; developer builds ask for a server. */
+  readonly keyBuild = !!API_KEY;
   private readonly router = inject(Router);
 
   server = DEFAULT_SERVER;
@@ -159,7 +154,7 @@ export class SetupPage implements OnInit {
     builtAt: new Date(BUILT_AT).toLocaleString('en-IN'),
     server: DEFAULT_SERVER,
     platform: Capacitor.getPlatform(),
-    signIn: this.auth.enabled ? 'Entra External ID (email code)' : 'Development header',
+    key: API_KEY ? 'Built in' : 'None (developer build)',
     storage: Capacitor.getPlatform() === 'android' ? 'SQLite' : 'Browser (localStorage)',
   };
 
@@ -168,40 +163,27 @@ export class SetupPage implements OnInit {
   readonly yatras = signal<YatraSummary[] | null>(null);
 
   async ngOnInit(): Promise<void> {
-    await Promise.all([this.ledger.init(), this.auth.init()]);
+    await this.ledger.init();
     const s = this.ledger.settings();
     if (s) {
       this.server = s.baseUrl;
       this.name = s.displayName;
       this.email = s.devEmail ?? '';
-    }
-    if (this.auth.enabled) {
-      if (this.auth.signedIn() && this.name.trim()) await this.loadYatras();
-    } else if (s) {
-      await this.connect();
+      if (this.keyBuild) await this.connectWithKey();
+      else await this.connect();
     }
   }
 
-  /** Signs in by email if needed, then lists this person's yatras. */
-  async signInAndConnect(): Promise<void> {
+  /** Builds with the API key: save the name, then list the yatras on the build's server. */
+  async connectWithKey(): Promise<void> {
+    if (!this.name.trim()) {
+      this.error.set('Enter your name.');
+      return;
+    }
     await this.run(async () => {
-      if (!this.auth.signedIn()) {
-        const tokens = await this.auth.signIn();
-        if (!this.name.trim() && tokens.name) this.name = tokens.name;
-      }
-      if (!this.name.trim()) throw new Error('Enter your name.');
       await this.ledger.saveSettings({ baseUrl: DEFAULT_SERVER, displayName: this.name.trim() });
       this.yatras.set(await this.ledger.api().listYatras());
     });
-  }
-
-  async signOut(): Promise<void> {
-    await this.auth.signOut();
-    this.yatras.set(null);
-  }
-
-  private async loadYatras(): Promise<void> {
-    await this.run(async () => this.yatras.set(await this.ledger.api().listYatras()));
   }
 
   day(d: string): string {
@@ -219,7 +201,6 @@ export class SetupPage implements OnInit {
         displayName: this.name.trim(),
         devUser: this.email.trim().toLowerCase(),
         devEmail: this.email.trim().toLowerCase(),
-        token: null,
       });
       this.yatras.set(await this.ledger.api().listYatras());
     });

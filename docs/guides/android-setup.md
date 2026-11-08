@@ -6,16 +6,23 @@ How to build the phone app on your laptop, run it on a phone while developing, a
 
 | APK | How | Signed with | Talks to | Use it for |
 |---|---|---|---|---|
-| Run on a connected phone | `npm run android:run` | This laptop's debug key | Azure API, email sign-in | Developing: build, install and open in one go |
-| Debug APK file | `npm run android:apk` | This laptop's debug key | Azure API, email sign-in | Trying a build on a phone without a cable |
-| Release APK from GitHub | Merge a PR to `main` | The release key | Azure API, email sign-in | **The volunteers' phones.** Each release installs over the last |
-| Release APK from this laptop | `.\scripts\release-apk.ps1` | The release key | Azure API, email sign-in | Handing out a build when GitHub is not an option |
+| Run on a connected phone | `npm run android:run` | This laptop's debug key | Azure API | Developing: build, install and open in one go |
+| Debug APK file | `npm run android:apk` | This laptop's debug key | Azure API | Trying a build on your phone without a cable |
+| Release APK from GitHub | Merge a PR to `main` | The release key | Azure API | **Your everyday app.** Each release installs over the last |
+| Release APK from this laptop | `.\scripts\release-apk.ps1` | The release key | Azure API | A signed build when GitHub is not an option |
 
-Every build talks to the server in `ui\app.config.json` (the Azure API) and signs in with Entra External ID ([entra-setup.md](entra-setup.md)). To work against the API running on this laptop instead, set `$env:MY_API_URL = "http://<laptop address>:5180"` and `$env:MY_DEV_SIGNIN = "1"`; that build then asks for a server, name and email and uses the API's Development header.
+Every build talks to the server in `ui\app.config.json` (the Azure API) and carries the API key (below). To work against the API running on this laptop instead, set `$env:MY_API_URL = "http://<laptop address>:5180"` and `$env:MY_DEV_SIGNIN = "1"`; that build then asks for a server, name and email and uses the API's Development header.
 
 Android only updates an app with one signed by the **same key**. A debug-key build and a release build cannot replace each other; uninstall one to install the other. Data on the phone is lost on uninstall, so sync before uninstalling (the register's chip should say *Synced*).
 
 A build pointed at an https server refuses plain-http traffic and mixed content; only a build pointed at an http laptop address allows them.
+
+## The API key and the fingerprint lock
+
+The app has one user, you. Two things protect the books:
+
+- **The API key** lets the Azure server trust your app. It is a long random value built into the APK when it is made; you never type it. `infra\azure-setup.ps1` creates it and writes it to `ui\app.secrets.json`, which is git-ignored. Laptop builds read it from there; GitHub release builds read the `API_KEY` secret. A build without it warns *no API key for an https server* and the app gets "did not accept this app's key". Because the key is inside the APK, **don't share your APK file** with anyone.
+- **The fingerprint lock** keeps the books from anyone holding your phone. The app asks for your fingerprint, face or phone PIN when it opens, and again after 2 minutes in the background (a quick switch to WhatsApp to send a receipt does not lock it). The fingerprint is checked by Android and never leaves the phone. If the phone has no screen lock at all, the app cannot lock; *This build* on the Set up screen says so.
 
 ## One-time laptop setup
 
@@ -49,7 +56,7 @@ dotnet run --project src/MantralayaYatra.Api --urls http://0.0.0.0:5180
 
 Windows asks once whether to allow it through the firewall: allow it on **private** networks. Find the laptop's address with `ipconfig` (the Wi-Fi adapter's IPv4 address, such as 192.168.1.20).
 
-Then, from `ui`, build against it (`MY_DEV_SIGNIN` switches off Entra sign-in for this build, since the laptop API uses the Development header):
+Then, from `ui`, build against it (`MY_DEV_SIGNIN` leaves the key out of this build, since the laptop API uses the Development header):
 
 ```powershell
 $env:MY_API_URL = "http://192.168.1.20:5180"

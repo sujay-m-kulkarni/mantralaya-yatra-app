@@ -22,7 +22,7 @@ tests/
    docker run -d --name yatra-sql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=Your_strong_password1 -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
    ```
 2. Run the API (Development): `dotnet run --project src/MantralayaYatra.Api`. It listens on http://localhost:5180 and builds the database on start.
-3. Open `src/MantralayaYatra.Api/MantralayaYatra.Api.http` in VS Code or Visual Studio and send the requests in order. The `X-Dev-User` header signs you in without Entra (Development only).
+3. Open `src/MantralayaYatra.Api/MantralayaYatra.Api.http` in VS Code or Visual Studio and send the requests in order. The `X-Dev-User` header signs you in without the API key (Development only).
 
 ## Tests
 

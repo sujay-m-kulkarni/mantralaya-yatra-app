@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MantralayaYatra.Api.Auth;
 using Testcontainers.MsSql;
 
 namespace MantralayaYatra.Api.IntegrationTests;
@@ -20,6 +21,8 @@ namespace MantralayaYatra.Api.IntegrationTests;
 public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string SubjectHeader = "X-Test-Subject";
+    public const string ApiKey = "integration-test-api-key-0123456789abcdef";
+    private const string TestScheme = "TestOrApiKey";
     public const string EmailHeader = "X-Test-Email";
 
     private readonly MsSqlContainer _sql = new MsSqlBuilder()
@@ -40,6 +43,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await _sql.DisposeAsync();
     }
 
+    /// <summary>A client that sends the API key, as the phone app does.</summary>
+    public HttpClient OwnerClient(string? key = ApiKey)
+    {
+        var client = CreateClient();
+        if (key is not null)
+        {
+            client.DefaultRequestHeaders.Add(ApiKeySignIn.Header, key);
+        }
+
+        return client;
+    }
+
     /// <summary>A client signed in as a person with this email. Use a fresh email per test so tests never share data.</summary>
     public HttpClient ClientFor(string email)
     {
@@ -54,12 +69,16 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Yatra", _sql.GetConnectionString());
         builder.UseSetting("Database:MigrateOnStartup", "true");
-        builder.UseSetting("Auth:Authority", "https://login.example.test/tenant/v2.0");
-        builder.UseSetting("Auth:Audience", "api://mantralaya-yatra-tests");
+        builder.UseSetting("Access:ApiKey", ApiKey);
 
         builder.ConfigureTestServices(services =>
         {
-            services.AddAuthentication(HeaderAuthHandler.SchemeName)
+            // Requests with the API key go through the real key handler; the rest use the test header,
+            // so tests can act as several different people.
+            services.AddAuthentication(TestScheme)
+                .AddPolicyScheme(TestScheme, "API key or test header", options =>
+                    options.ForwardDefaultSelector = context =>
+                        context.Request.Headers.ContainsKey(ApiKeySignIn.Header) ? ApiKeySignIn.Scheme : HeaderAuthHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, HeaderAuthHandler>(HeaderAuthHandler.SchemeName, _ => { });
 
             // Put the server-side exception in the 500 response, so a failing test shows its cause.
