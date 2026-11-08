@@ -254,6 +254,10 @@ namespace MantralayaYatra.Infrastructure.Persistence.Migrations
                         .HasColumnType("int")
                         .HasColumnName("daily_limit");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("deleted_at");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit")
                         .HasColumnName("is_active");
